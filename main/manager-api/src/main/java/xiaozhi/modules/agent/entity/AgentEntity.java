@@ -78,4 +78,13 @@ public class AgentEntity {
 
     @Schema(description = "更新时间")
     private Date updatedAt;
+
+    @Schema(description = "小主名称")
+    private String nickName;
+
+    @Schema(description = "性别1男，2女，0保密")
+    private String sex;
+
+    @Schema(description = "生日" ,format = "yyyymmdd")
+    private String birthday;
 }

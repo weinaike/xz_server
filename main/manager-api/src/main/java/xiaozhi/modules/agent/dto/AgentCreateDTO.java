@@ -1,10 +1,10 @@
 package xiaozhi.modules.agent.dto;
 
-import java.io.Serializable;
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+
+import java.io.Serializable;
 
 /**
  * 智能体创建DTO
@@ -18,4 +18,18 @@ public class AgentCreateDTO implements Serializable {
     @Schema(description = "智能体名称", example = "客服助手")
     @NotBlank(message = "智能体名称不能为空")
     private String agentName;
+
+    @Schema(description = "小主名称")
+//    @NotBlank(message = "小主名称不能为空")
+    private String nickName;
+
+    @Schema(description = "性别1男，2女，0保密", example = "0")
+//    @NotBlank(message = "性别不能为空")
+//    @Size(min = 1, max = 1, message = "性别只能是0保密，1男，2女")
+    private String sex;
+
+    @Schema(description = "生日", format = "yyyymmdd")
+//    @NotBlank(message = "生日不能为空")
+//    @Size(min = 10, max = 10, message = "生日的格式是yyyyMMdd")
+    private String birthday;
 }

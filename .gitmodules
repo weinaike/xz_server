@@ -1,0 +1,4 @@
+[submodule "main/friend"]
+	path = main/friend
+	url = git@github.com:weinaike/friend.git
+	branch = dev

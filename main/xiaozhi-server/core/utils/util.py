@@ -9,6 +9,7 @@ import opuslib_next
 from pydub import AudioSegment
 from typing import Dict, Any
 from core.utils import tts, llm, intent, memory, vad, asr
+import copy
 
 TAG = __name__
 emoji_map = {
@@ -268,16 +269,7 @@ def initialize_modules(
     # 初始化TTS模块
     if init_tts:
         select_tts_module = config["selected_module"]["TTS"]
-        tts_type = (
-            select_tts_module
-            if "type" not in config["TTS"][select_tts_module]
-            else config["TTS"][select_tts_module]["type"]
-        )
-        modules["tts"] = tts.create_instance(
-            tts_type,
-            config["TTS"][select_tts_module],
-            str(config.get("delete_audio", True)).lower() in ("true", "1", "yes"),
-        )
+        modules["tts"] = initialize_tts(config)
         logger.bind(tag=TAG).info(f"初始化组件: tts成功 {select_tts_module}")
 
     # 初始化LLM模块
@@ -319,7 +311,7 @@ def initialize_modules(
         modules["memory"] = memory.create_instance(
             memory_type,
             config["Memory"][select_memory_module],
-            config.get('summaryMemory', None),
+            config.get("summaryMemory", None),
         )
         logger.bind(tag=TAG).info(f"初始化组件: memory成功 {select_memory_module}")
 
@@ -352,6 +344,21 @@ def initialize_modules(
         )
         logger.bind(tag=TAG).info(f"初始化组件: asr成功 {select_asr_module}")
     return modules
+
+
+def initialize_tts(config):
+    select_tts_module = config["selected_module"]["TTS"]
+    tts_type = (
+        select_tts_module
+        if "type" not in config["TTS"][select_tts_module]
+        else config["TTS"][select_tts_module]["type"]
+    )
+    new_tts = tts.create_instance(
+        tts_type,
+        config["TTS"][select_tts_module],
+        str(config.get("delete_audio", True)).lower() in ("true", "1", "yes"),
+    )
+    return new_tts
 
 
 def analyze_emotion(text):
@@ -881,7 +888,10 @@ def audio_to_data(audio_file_path, is_opus=True):
 
     # 获取原始PCM数据（16位小端）
     raw_data = audio.raw_data
+    return pcm_to_data(raw_data, is_opus), duration
 
+
+def pcm_to_data(raw_data, is_opus=True):
     # 初始化Opus编码器
     encoder = opuslib_next.Encoder(16000, 1, opuslib_next.APPLICATION_AUDIO)
 
@@ -909,7 +919,7 @@ def audio_to_data(audio_file_path, is_opus=True):
 
         datas.append(frame_data)
 
-    return datas, duration
+    return datas
 
 
 def check_vad_update(before_config, new_config):
@@ -956,3 +966,37 @@ def check_asr_update(before_config, new_config):
     )
     update_asr = current_asr_type != new_asr_type
     return update_asr
+
+
+def filter_sensitive_info(config: dict) -> dict:
+    """
+    过滤配置中的敏感信息
+    Args:
+        config: 原始配置字典
+    Returns:
+        过滤后的配置字典
+    """
+    sensitive_keys = [
+        "api_key",
+        "personal_access_token",
+        "access_token",
+        "token",
+        "secret",
+        "access_key_secret",
+        "secret_key",
+    ]
+
+    def _filter_dict(d: dict) -> dict:
+        filtered = {}
+        for k, v in d.items():
+            if any(sensitive in k.lower() for sensitive in sensitive_keys):
+                filtered[k] = "***"
+            elif isinstance(v, dict):
+                filtered[k] = _filter_dict(v)
+            elif isinstance(v, list):
+                filtered[k] = [_filter_dict(i) if isinstance(i, dict) else i for i in v]
+            else:
+                filtered[k] = v
+        return filtered
+
+    return _filter_dict(copy.deepcopy(config))

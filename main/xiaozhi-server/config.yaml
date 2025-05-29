@@ -85,6 +85,7 @@ module_test:
 # 唤醒词，用于识别唤醒词还是讲话内容
 wakeup_words:
   - "你好小智"
+  - "嘿你好呀"
   - "你好小志"
   - "小爱同学"
   - "你好小鑫"
@@ -218,8 +219,12 @@ Memory:
     # 不想使用记忆功能，可以使用nomem
     type: nomem
   mem_local_short:
-    # 本地记忆功能，通过selected_module的llm总结，数据保存在本地，不会上传到服务器
+    # 本地记忆功能，通过selected_module的llm总结，数据保存在本地服务器，不会上传到外部服务器
     type: mem_local_short
+    # 配备记忆存储独立的思考模型
+    # 如果这里不填，则会默认使用selected_module.LLM的模型作为意图识别的思考模型
+    # 如果你的不想使用selected_module.LLM记忆存储，这里最好使用独立的LLM作为意图识别，例如使用免费的ChatGLMLLM
+    llm: ChatGLMLLM
 
 ASR:
   FunASR:
@@ -325,7 +330,7 @@ LLM:
     # 定义LLM API类型
     type: openai
     # 先开通服务，打开以下网址，开通的服务搜索Doubao-1.5-pro，开通它
-    # 开通改地址：https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&OpenTokenDrawer=false
+    # 开通地址：https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&OpenTokenDrawer=false
     # 免费额度500000token
     # 开通后，进入这里获取密钥：https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D
     base_url: https://ark.cn-beijing.volces.com/api/v3
@@ -411,7 +416,7 @@ LLM:
     base_url: https://host/api/v1
     # 你可以在这里找到你的api_key
     # https://cloud.tryfastgpt.ai/account/apikey
-    api_key: fastgpt-xxx
+    api_key: 你的fastgpt密钥
     variables:
       k: "v"
       k2: "v2"
@@ -452,6 +457,19 @@ TTS:
     speed_ratio: 1.0
     volume_ratio: 1.0
     pitch_ratio: 1.0
+  #火山tts，支持双向流式tts
+  HuoshanDoubleStreamTTS:
+    type: huoshan_double_stream
+    # 访问 https://console.volcengine.com/speech/service/10007 开通语音合成大模型，购买音色
+    # 在页面底部获取appid和access_token
+    # 资源ID固定为：volc.service_type.10029（大模型语音合成及混音）
+    # 如果是机智云，把接口地址换成wss://bytedance.gizwitsapi.com/api/v3/tts/bidirection
+    # 机智云不需要天填 appid
+    ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection
+    appid: 你的火山引擎语音合成服务appid
+    access_token: 你的火山引擎语音合成服务access_token
+    resource_id: volc.service_type.10029
+    speaker: zh_female_wanwanxiaohe_moon_bigtts
   CosyVoiceSiliconflow:
     type: siliconflow
     # 硅基流动TTS
@@ -675,17 +693,24 @@ TTS:
     speed: 1
     output_dir: tmp/
   CustomTTS:
-    # 自定义的TTS接口服务，请求参数可自定义
-    # 要求接口使用GET方式请求，并返回音频文件
+    # 自定义的TTS接口服务，请求参数可自定义，可接入众多TTS服务
+    # 以本地部署的KokoroTTS为例
+    # 如果只有cpu运行：docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    # 如果只有gpu运行：docker run --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    # 要求接口使用POST方式请求，并返回音频文件
     type: custom
-    url: "http://127.0.0.1:9880/tts"
+    method: POST
+    url: "http://127.0.0.1:8880/v1/audio/speech"
     params: # 自定义请求参数
-      # text: "{prompt_text}" # {prompt_text}会被替换为实际的提示词内容
-      # speaker: jok老师
-      # speed: 1
-      # foo: bar
-      # testabc: 123456
+      input: "{prompt_text}"
+      response_format: "mp3"
+      download_format: "mp3"
+      voice: "zf_xiaoxiao"
+      lang_code: "z"
+      return_download_link: true
+      speed: 1
+      stream: false
     headers: # 自定义请求头
       # Authorization: Bearer xxxx
-    format: wav # 接口返回的音频格式
+    format: mp3 # 接口返回的音频格式
     output_dir: tmp/

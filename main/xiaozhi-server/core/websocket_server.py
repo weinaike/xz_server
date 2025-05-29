@@ -19,16 +19,16 @@ class WebSocketServer:
             "VAD" in self.config["selected_module"],
             "ASR" in self.config["selected_module"],
             "LLM" in self.config["selected_module"],
-            "TTS" in self.config["selected_module"],
+            False,
             "Memory" in self.config["selected_module"],
             "Intent" in self.config["selected_module"],
         )
         self._vad = modules["vad"] if "vad" in modules else None
         self._asr = modules["asr"] if "asr" in modules else None
-        self._tts = modules["tts"] if "tts" in modules else None
         self._llm = modules["llm"] if "llm" in modules else None
         self._intent = modules["intent"] if "intent" in modules else None
         self._memory = modules["memory"] if "memory" in modules else None
+
         self.active_connections = set()
 
     async def start(self):
@@ -49,7 +49,6 @@ class WebSocketServer:
             self._vad,
             self._asr,
             self._llm,
-            self._tts,
             self._memory,
             self._intent,
             self,  # 传入server实例
@@ -82,11 +81,13 @@ class WebSocketServer:
                 if new_config is None:
                     self.logger.bind(tag=TAG).error("获取新配置失败")
                     return False
-
+                self.logger.bind(tag=TAG).info(f"获取新配置成功")
                 # 检查 VAD 和 ASR 类型是否需要更新
                 update_vad = check_vad_update(self.config, new_config)
                 update_asr = check_asr_update(self.config, new_config)
-
+                self.logger.bind(tag=TAG).info(
+                    f"检查VAD和ASR类型是否需要更新: {update_vad} {update_asr}"
+                )
                 # 更新配置
                 self.config = new_config
                 # 重新初始化组件
@@ -96,7 +97,7 @@ class WebSocketServer:
                     update_vad,
                     update_asr,
                     "LLM" in new_config["selected_module"],
-                    "TTS" in new_config["selected_module"],
+                    False,
                     "Memory" in new_config["selected_module"],
                     "Intent" in new_config["selected_module"],
                 )
@@ -106,15 +107,13 @@ class WebSocketServer:
                     self._vad = modules["vad"]
                 if "asr" in modules:
                     self._asr = modules["asr"]
-                if "tts" in modules:
-                    self._tts = modules["tts"]
                 if "llm" in modules:
                     self._llm = modules["llm"]
                 if "intent" in modules:
                     self._intent = modules["intent"]
                 if "memory" in modules:
                     self._memory = modules["memory"]
-
+                self.logger.bind(tag=TAG).info(f"更新配置任务执行完毕")
                 return True
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"更新服务器配置失败: {str(e)}")

@@ -7,6 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import xiaozhi.common.constant.Constant;
 import xiaozhi.modules.sys.service.SysParamsService;
+import xiaozhi.modules.sys.utils.DingTalkAlarmUtil;
 import xiaozhi.modules.sys.utils.WebSocketValidator;
 
 /**
@@ -17,6 +18,7 @@ import xiaozhi.modules.sys.utils.WebSocketValidator;
 @RequiredArgsConstructor
 public class WebSocketHealthCheckTask {
     private final SysParamsService sysParamsService;
+    private final DingTalkAlarmUtil dingTalkAlarmUtil;
 
     /**
      * 每10分钟检查一次 server.websocket 配置的所有地址有效性
@@ -35,7 +37,7 @@ public class WebSocketHealthCheckTask {
             log.info("[WebSocket健康检查] 地址: {} 格式: {} 可连接: {}", url, valid, connectable);
             if (!connectable) {
                 String alarmMsg = String.format("[WebSocket异常告警]\n地址: %s\n格式: %s\n可连接: %s\n请及时检查服务状态！", url, valid, connectable);
-                xiaozhi.modules.sys.utils.DingTalkAlarmUtil.sendAlarm(alarmMsg);
+                dingTalkAlarmUtil.sendAlarm(alarmMsg);
             }
         }
     }

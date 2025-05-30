@@ -104,9 +104,9 @@ public class LoginController {
     @PostMapping("/register")
     @Operation(summary = "注册")
     public Result<Void> register(@RequestBody LoginDTO login) {
-        if (!sysUserService.getAllowUserRegister()) {
-            throw new RenException("当前不允许普通用户注册");
-        }
+        // if (!sysUserService.getAllowUserRegister()) {
+        //     throw new RenException("当前不允许普通用户注册");
+        // }
         // 是否开启手机注册
         Boolean isMobileRegister = sysParamsService
                 .getValueObject(Constant.SysMSMParam.SERVER_ENABLE_MOBILE_REGISTER.getValue(), Boolean.class);

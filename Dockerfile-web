@@ -9,7 +9,11 @@ RUN npm run build
 # 第二阶段：构建Java后端
 FROM maven:3.9.4-eclipse-temurin-21 as api-builder
 WORKDIR /app
+# 配置阿里云Maven镜像源，加速依赖下载
+RUN mkdir -p /root/.m2 && \
+    echo '<settings><mirrors><mirror><id>aliyunmaven</id><mirrorOf>*</mirrorOf><name>阿里云公共仓库</name><url>https://maven.aliyun.com/repository/public</url></mirror></mirrors></settings>' > /root/.m2/settings.xml
 COPY main/manager-api/pom.xml .
+RUN mvn dependency:go-offline
 COPY main/manager-api/src ./src
 RUN mvn clean package -Dmaven.test.skip=true
 

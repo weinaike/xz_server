@@ -2,3 +2,6 @@
 	path = main/friend
 	url = git@github.com:weinaike/friend.git
 	branch = dev
+[submodule "xz-server"]
+	path = xz-server
+	url = git@github.com:weinaike/xz-server.git

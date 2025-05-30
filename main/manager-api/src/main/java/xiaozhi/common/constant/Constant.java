@@ -253,4 +253,7 @@ public interface Constant {
             return value;
         }
     }
+
+    String DINGTALK_WEBHOOK = "server.dingtalk_webhook";
+    String DINGTALK_SECRET = "server.dingtalk_secret";
 }

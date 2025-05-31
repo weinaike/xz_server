@@ -60,4 +60,13 @@ public class AgentUpdateDTO implements Serializable {
 
     @Schema(description = "排序", example = "1", required = false)
     private Integer sort;
+
+    @Schema(description = "小主名称", example = "小明", required = false)
+    private String nickName;
+
+    @Schema(description = "性别", example = "male", required = false)
+    private String sex;
+
+    @Schema(description = "生日", example = "2010-01-01", required = false)
+    private String birthday;
 }

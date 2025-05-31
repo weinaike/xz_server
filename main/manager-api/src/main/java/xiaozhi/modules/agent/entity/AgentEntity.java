@@ -85,6 +85,6 @@ public class AgentEntity {
     @Schema(description = "性别1男，2女，0保密")
     private String sex;
 
-    @Schema(description = "生日" ,format = "yyyymmdd")
+    @Schema(description = "生日", format = "yyyymmdd")
     private String birthday;
 }

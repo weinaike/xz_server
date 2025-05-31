@@ -201,6 +201,16 @@ public class AgentController {
         if (dto.getSort() != null) {
             existingEntity.setSort(dto.getSort());
         }
+        // 新增：nickName、sex、birthday 字段的更新
+        if (dto.getNickName() != null) {
+            existingEntity.setNickName(dto.getNickName());
+        }
+        if (dto.getSex() != null) {
+            existingEntity.setSex(dto.getSex());
+        }
+        if (dto.getBirthday() != null) {
+            existingEntity.setBirthday(dto.getBirthday());
+        }
 
         // 设置更新者信息
         UserDetail user = SecurityUser.getUser();

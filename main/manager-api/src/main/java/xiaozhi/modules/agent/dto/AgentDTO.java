@@ -42,4 +42,13 @@ public class AgentDTO {
 
     @Schema(description = "设备数量", example = "10")
     private Integer deviceCount;
+
+    @Schema(description = "小主名称", example = "小明")
+    private String nickName;
+
+    @Schema(description = "性别1男，2女，0保密", example = "1")
+    private String sex;
+
+    @Schema(description = "生日", example = "20200101", format = "yyyymmdd")
+    private String birthday;
 }

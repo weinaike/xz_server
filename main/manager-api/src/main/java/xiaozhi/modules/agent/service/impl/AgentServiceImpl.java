@@ -113,6 +113,11 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
 
             // 获取设备数量
             dto.setDeviceCount(getDeviceCountByAgentId(agent.getId()));
+
+            // 新增：nickName、sex、birthday
+            dto.setNickName(agent.getNickName());
+            dto.setSex(agent.getSex());
+            dto.setBirthday(agent.getBirthday());
             return dto;
         }).collect(Collectors.toList());
     }

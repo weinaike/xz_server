@@ -1,6 +1,6 @@
 <template>
   <el-dialog :visible="visible" @close="handleClose" width="60%" center :title="'编辑智能体模板'">
-    <AgentTemplateForm v-model="form" />
+    <AgentTemplateForm v-model="form" ref="agentForm" />
     <div style="display: flex; margin: 15px 15px; gap: 7px;">
       <div class="dialog-btn" @click="confirm">保存</div>
       <div class="dialog-btn" style="background: #e6ebff; border: 1px solid #adbdff; color: #5778ff;" @click="cancel">取消</div>
@@ -46,7 +46,10 @@ export default {
   },
   methods: {
     confirm() {
-      this.$emit('confirm', { ...this.form });
+      this.$refs.agentForm.$refs.formRef.validate((valid) => {
+        if (!valid) return;
+        this.$emit('confirm', { ...this.form });
+      });
     },
     cancel() {
       this.$emit('cancel');

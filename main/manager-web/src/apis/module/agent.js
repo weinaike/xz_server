@@ -143,4 +143,68 @@ export default {
                 });
             }).send();
     },
+    // 新增：创建智能体模板
+    createAgentTemplate(templateData, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/template`)
+            .method('POST')
+            .data(templateData)
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail(() => {
+                RequestService.reAjaxFun(() => {
+                    this.createAgentTemplate(templateData, callback);
+                });
+            }).send();
+    },
+    // 新增：更新智能体模板
+    updateAgentTemplate(templateId, templateData, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/template/${templateId}`)
+            .method('PUT')
+            .data(templateData)
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail(() => {
+                RequestService.reAjaxFun(() => {
+                    this.updateAgentTemplate(templateId, templateData, callback);
+                });
+            }).send();
+    },
+    // 新增：删除智能体模板
+    deleteAgentTemplate(templateId, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/template/${templateId}`)
+            .method('DELETE')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail(() => {
+                RequestService.reAjaxFun(() => {
+                    this.deleteAgentTemplate(templateId, callback);
+                });
+            }).send();
+    },
+
+    // 新增方法：通过ID获取智能体模板
+    getAgentTemplateById(templateId, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/template/${templateId}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取模板失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.getAgentTemplateById(templateId, callback);
+                });
+            }).send();
+    },
 }

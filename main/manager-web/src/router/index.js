@@ -117,6 +117,17 @@ const routes = [
       return import('../views/ProviderManagement.vue')
     }
   },
+  {
+    path: '/template-management',
+    name: 'TemplateManagement',
+    component: function () {
+      return import('../views/agentTemplateManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '智能体模板管理'
+    }
+  },
 ]
 const router = new VueRouter({
   base: process.env.VUE_APP_PUBLIC_PATH || '/',
@@ -138,7 +149,7 @@ VueRouter.prototype.push = function push(location) {
 }
 
 // 需要登录才能访问的路由
-const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig']
+const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'agentTemplateManagement']
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

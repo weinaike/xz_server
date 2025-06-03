@@ -319,4 +319,49 @@ public class AgentController {
                 .body(audioData);
     }
 
+    @PostMapping("/template")
+    @Operation(summary = "新增智能体模板")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<String> createTemplate(@RequestBody @Valid AgentTemplateEntity dto) {
+        // 设置创建者和时间
+        UserDetail user = SecurityUser.getUser();
+        dto.setCreator(user.getId());
+        dto.setCreatedAt(new Date());
+        agentTemplateService.save(dto);
+        return new Result<String>().ok(dto.getId());
+    }
+
+    @PutMapping("/template/{id}")
+    @Operation(summary = "更新智能体模板")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<Void> updateTemplate(@PathVariable String id, @RequestBody @Valid AgentTemplateEntity dto) {
+        AgentTemplateEntity entity = agentTemplateService.getById(id);
+        if (entity == null) {
+            return new Result<Void>().error("模板不存在");
+        }
+        dto.setId(id);
+        agentTemplateService.updateById(dto);
+        return new Result<>();
+    }
+
+    @DeleteMapping("/template/{id}")
+    @Operation(summary = "删除智能体模板")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<Void> deleteTemplate(@PathVariable String id) {
+        agentTemplateService.removeById(id);
+        return new Result<>();
+    }
+
+    // 通过ID获取智能体模板
+    @GetMapping("/template/{id}")
+    @Operation(summary = "获取智能体模板详情")
+    @RequiresPermissions("sys:role:normal")
+    public Result<AgentTemplateEntity> getTemplateById(@PathVariable String id) {
+        AgentTemplateEntity template = agentTemplateService.getById(id);
+        if (template == null) {
+            return new Result<AgentTemplateEntity>().error("模板不存在");
+        }
+        return new Result<AgentTemplateEntity>().ok(template);
+    }
+
 }

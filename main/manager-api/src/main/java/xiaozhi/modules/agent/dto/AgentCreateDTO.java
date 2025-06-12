@@ -33,4 +33,8 @@ public class AgentCreateDTO implements Serializable {
     @NotBlank(message = "生日不能为空")
     @Size(min = 10, max = 10, message = "生日的格式是yyyyMMdd")
     private String birthday;
+
+    @Schema(description = "智能体模板ID", example = "123456")
+    // @NotBlank(message = "智能体模板ID不能为空")
+    private String agentTemplateId;
 }

@@ -98,9 +98,16 @@ public class AgentController {
     @RequiresPermissions("sys:role:normal")
     public Result<String> save(@RequestBody @Valid AgentCreateDTO dto) {
         AgentEntity entity = ConvertUtils.sourceToTarget(dto, AgentEntity.class);
-
-        // 获取默认模板
-        AgentTemplateEntity template = agentTemplateService.getDefaultTemplate();
+        // AgentCreateDTO::agentTemplateId 如果为空， 则使用默认模板，否则则使用指定ID的模板
+        AgentTemplateEntity template = null;
+        if (StringUtils.isBlank(dto.getAgentTemplateId())) {
+            template = agentTemplateService.getDefaultTemplate();
+        } else {
+            template = agentTemplateService.getById(dto.getAgentTemplateId());
+            if (template == null) {
+                return new Result<String>().error("指定的智能体模板不存在");
+            }
+        }
         if (template != null) {
             // 设置模板中的默认值
             entity.setAsrModelId(template.getAsrModelId());

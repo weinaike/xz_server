@@ -69,4 +69,10 @@ public class AgentUpdateDTO implements Serializable {
 
     @Schema(description = "生日", example = "2010-01-01", required = false)
     private String birthday;
+
+    @Schema(description = "使用的智能体模板ID", required = false)
+    private String agentTemplateId;
+
+    @Schema(description = "模板版本号", required = false)
+    private Integer templateVersion;
 }

@@ -23,6 +23,12 @@
       <div class="settings-btn" @click="handleEdit">
         编辑模板
       </div>
+      <div v-if="!isDefault" class="settings-btn" @click="handleSetDefault">
+        设为默认
+      </div>
+      <div v-else class="settings-btn disabled-btn">
+        已默认
+      </div>
     </div>
     <div class="version-info">
       <div>创建时间：{{ formattedCreatedAt }}</div>
@@ -41,6 +47,12 @@ export default {
       if (!this.template.createdAt) return '未知';
       const date = new Date(this.template.createdAt);
       return date.toLocaleString();
+    },
+    isDefault() {
+      if (this.template.isDefault === undefined || this.template.isDefault === null) {
+        return false;
+      }
+      return this.template.isDefault === 1 || this.template.isDefault === true;
     }
   },
   methods: {
@@ -49,6 +61,11 @@ export default {
     },
     handleEdit() {
       this.$emit('edit', this.template)
+    },
+    handleSetDefault() {
+      if (!this.isDefault) {
+        this.$emit('set-default', this.template.id)
+      }
     }
   }
 }

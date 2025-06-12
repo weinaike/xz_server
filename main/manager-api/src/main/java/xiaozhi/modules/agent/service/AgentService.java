@@ -79,4 +79,11 @@ public interface AgentService extends BaseService<AgentEntity> {
      * @return 是否有权限
      */
     boolean checkAgentPermission(String agentId, Long userId);
+
+    /**
+     * 统计引用指定模板ID的智能体数量
+     * @param agentTemplateId 智能体模板ID
+     * @return 数量
+     */
+    Long countByAgentTemplateId(String agentTemplateId);
 }

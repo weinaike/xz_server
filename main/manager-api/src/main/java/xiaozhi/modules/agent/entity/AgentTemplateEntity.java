@@ -118,6 +118,16 @@ public class AgentTemplateEntity implements Serializable {
      */
     private Date updatedAt;
 
+    /**
+     * 版本号
+     */
+    private Integer version;
+
+    /**
+     * 是否设置为默认模板（0否，1是）
+     */
+    private Integer isDefault;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

@@ -51,4 +51,11 @@ public class AgentDTO {
 
     @Schema(description = "生日", example = "20200101", format = "yyyymmdd")
     private String birthday;
+
+    @Schema(description = "使用的智能体模板ID")
+    private String agentTemplateId;
+
+    @Schema(description = "模板版本号")
+    private Integer templateVersion;
+
 }

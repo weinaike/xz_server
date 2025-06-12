@@ -23,6 +23,10 @@
       <div class="settings-btn" @click="handleConfigure">
         配置角色
       </div>
+
+      <div v-if="showUpdateBtn"  class="settings-btn" @click="handleUpdateFromTemplate">
+        更新模板
+      </div>
       <div class="settings-btn" @click="handleDeviceManage">
         设备管理({{ device.deviceCount }})
       </div>
@@ -41,13 +45,14 @@
 </template>
 
 <script>
+import Api from '@/apis/module/agent';
 export default {
   name: 'DeviceItem',
   props: {
     device: { type: Object, required: true }
   },
   data() {
-    return { switchValue: false }
+    return { switchValue: false, templateVersionRemote: null };
   },
   computed: {
     formattedLastConnectedTime() {
@@ -68,6 +73,33 @@ export default {
       } else {
         return this.device.lastConnectedAt;
       }
+    },
+    showUpdateBtn() {
+      // 只有当模板ID和本地版本号都存在且远端版本号更高时显示
+      return (
+        this.device.agentTemplateId &&
+        this.device.templateVersion !== undefined &&
+        this.templateVersionRemote !== null &&
+        this.templateVersionRemote > this.device.templateVersion
+      );
+    }
+  },
+  watch: {
+    'device.agentTemplateId': {
+      immediate: true,
+      handler(val) {
+        if (val) {
+          Api.getAgentTemplateById(val, (res) => {
+            if (res.data && res.data.data) {
+              this.templateVersionRemote = res.data.data.version;
+            } else {
+              this.templateVersionRemote = null;
+            }
+          });
+        } else {
+          this.templateVersionRemote = null;
+        }
+      }
     }
   },
   methods: {
@@ -85,6 +117,47 @@ export default {
         return
       }
       this.$emit('chat-history', { agentId: this.device.agentId, agentName: this.device.agentName })
+    },
+    handleUpdateFromTemplate() {
+      this.$confirm('智能体更新至最新模板内容？此操作会覆盖当前配置。', '更新模板确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        // 拉取模板内容并更新智能体
+        Api.getAgentTemplateById(this.device.agentTemplateId, (res) => {
+          if (res.data && res.data.data) {
+            const tpl = res.data.data;
+            const updateData = {
+              agentName: tpl.agentName,
+              asrModelId: tpl.asrModelId,
+              vadModelId: tpl.vadModelId,
+              llmModelId: tpl.llmModelId,
+              ttsModelId: tpl.ttsModelId,
+              ttsVoiceId: tpl.ttsVoiceId,
+              memModelId: tpl.memModelId,
+              intentModelId: tpl.intentModelId,
+              chatHistoryConf: tpl.chatHistoryConf,
+              systemPrompt: tpl.systemPrompt,
+              summaryMemory: tpl.summaryMemory,
+              langCode: tpl.langCode,
+              language: tpl.language,
+              agentTemplateId: tpl.id,
+              templateVersion: tpl.version
+            };
+            Api.updateAgentConfig(this.device.agentId, updateData, (updateRes) => {
+              if (updateRes.data && updateRes.data.code === 0) {
+                this.$message.success('已同步到最新模板');
+                this.$emit('updated');
+              } else {
+                this.$message.error(updateRes.data.msg || '更新失败');
+              }
+            });
+          } else {
+            this.$message.error('获取模板信息失败');
+          }
+        });
+      }).catch(() => {});
     }
   }
 }

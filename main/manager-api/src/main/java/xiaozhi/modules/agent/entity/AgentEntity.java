@@ -87,4 +87,11 @@ public class AgentEntity {
 
     @Schema(description = "生日", format = "yyyymmdd")
     private String birthday;
+
+    // 使用的智能体模板ID
+    @Schema(description = "使用的智能体模板ID")
+    private String agentTemplateId;
+    // 模板版本号
+    @Schema(description = "模板版本号")
+    private Integer templateVersion;
 }

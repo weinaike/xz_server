@@ -1,5 +1,7 @@
 package xiaozhi.modules.agent.service.impl;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -25,6 +27,14 @@ public class AgentTemplateServiceImpl extends ServiceImpl<AgentTemplateDao, Agen
      * @return 默认模板实体
      */
     public AgentTemplateEntity getDefaultTemplate() {
+        // 优先查找is_default=1的模板
+        LambdaQueryWrapper<AgentTemplateEntity> defaultWrapper = new LambdaQueryWrapper<>();
+        defaultWrapper.eq(AgentTemplateEntity::getIsDefault, 1);
+        AgentTemplateEntity defaultTemplate = this.getOne(defaultWrapper);
+        if (defaultTemplate != null) {
+            return defaultTemplate;
+        }
+        // 若无默认项，按sort排序取第一个
         LambdaQueryWrapper<AgentTemplateEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByAsc(AgentTemplateEntity::getSort)
                 .last("LIMIT 1");
@@ -65,5 +75,21 @@ public class AgentTemplateServiceImpl extends ServiceImpl<AgentTemplateDao, Agen
         }
         wrapper.ge("sort", 0);
         update(wrapper);
+    }
+
+    /**
+     * 清除默认模板
+     */
+    public void clearDefaultTemplate() {
+        // 先查找所有 is_default != 0 的模板
+        LambdaQueryWrapper<AgentTemplateEntity> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ne(AgentTemplateEntity::getIsDefault, 0);
+        List<AgentTemplateEntity> defaultTemplates = this.list(queryWrapper);
+        if (defaultTemplates != null && !defaultTemplates.isEmpty()) {
+            for (AgentTemplateEntity template : defaultTemplates) {
+                template.setIsDefault(0);
+                this.updateById(template);
+            }
+        }
     }
 }

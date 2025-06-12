@@ -16,8 +16,7 @@
             :style="{ filter: $route.path === '/home' || $route.path === '/role-config' || $route.path === '/device-management' ? 'brightness(0) invert(1)' : 'None' }" />
           智能体管理
         </div>
-        <div class="equipment-management"
-          :class="{ 'active-tab': $route.path === '/template-management' }"
+        <div v-if="isSuperAdmin" class="equipment-management" :class="{ 'active-tab': $route.path === '/template-management' }"
           @click="goTemplateManagement">
           <img loading="lazy" alt="" src="@/assets/header/robot.png"
             :style="{ filter: $route.path === '/template-management' ? 'brightness(0) invert(1)' : 'None' }" />

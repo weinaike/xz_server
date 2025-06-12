@@ -180,12 +180,19 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntit
     }
 
     private boolean isStrongPassword(String password) {
-        return true; // 不进行强密码验证，直接返回true
-        // 弱密码的正则表达式
-        String weakPasswordRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).+$";
-        Pattern pattern = Pattern.compile(weakPasswordRegex);
-        Matcher matcher = pattern.matcher(password);
-        return matcher.matches();
+        if(false)
+        {
+            // 弱密码的正则表达式
+            String weakPasswordRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).+$";
+            Pattern pattern = Pattern.compile(weakPasswordRegex);
+            Matcher matcher = pattern.matcher(password);
+            return matcher.matches();
+        }
+        else
+        {
+            return true; // 如果不需要密码强度验证，直接返回true
+        }
+
     }
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";

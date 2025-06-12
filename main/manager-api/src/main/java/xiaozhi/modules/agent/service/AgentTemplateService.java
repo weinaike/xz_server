@@ -17,7 +17,7 @@ public interface AgentTemplateService extends IService<AgentTemplateEntity> {
      * @return 默认模板实体
      */
     AgentTemplateEntity getDefaultTemplate();
-
+ 
     /**
      * 更新默认模板中的模型ID
      * 
@@ -25,4 +25,9 @@ public interface AgentTemplateService extends IService<AgentTemplateEntity> {
      * @param modelId   模型ID
      */
     void updateDefaultTemplateModelId(String modelType, String modelId);
+
+    /**
+     * 清除所有模板的默认标记
+     */
+    void clearDefaultTemplate();
 }

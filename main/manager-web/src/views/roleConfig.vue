@@ -41,6 +41,7 @@
                         <div v-for="(template, index) in templates" :key="`template-${index}`" class="template-item"
                           :class="{ 'template-loading': loadingTemplate }" @click="selectTemplate(template)">
                           {{ template.agentName }}
+                          <span v-if="template.version" style="color:#999;font-size:10px;margin-left:4px;">v{{ template.version }}</span>
                         </div>
                       </div>
                     </el-form-item>
@@ -143,6 +144,8 @@ export default {
         langCode: "",
         language: "",
         sort: "",
+        agentTemplateId: '', // 新增
+        templateVersion: '', // 新增
         model: {
           ttsModelId: "",
           vadModelId: "",
@@ -199,8 +202,12 @@ export default {
         langCode: this.form.langCode,
         language: this.form.language,
         sort: this.form.sort,
-        functions: this.currentFunctions
+        functions: this.currentFunctions,
+        agentTemplateId: this.form.agentTemplateId, // 保持模板ID
+        templateVersion: this.form.templateVersion  // 保持模板版本号
       };
+      console.log('保存的配置数据:', configData);
+
       Api.agent.updateAgentConfig(this.$route.query.agentId, configData, ({ data }) => {
         if (data.code === 0) {
           this.$message.success({
@@ -231,6 +238,8 @@ export default {
           langCode: "",
           language: "",
           sort: "",
+          agentTemplateId: '', // 新增
+          templateVersion: '', // 新增
           model: {
             ttsModelId: "",
             vadModelId: "",
@@ -284,6 +293,8 @@ export default {
         systemPrompt: templateData.systemPrompt || this.form.systemPrompt,
         summaryMemory: templateData.summaryMemory || this.form.summaryMemory,
         langCode: templateData.langCode || this.form.langCode,
+        agentTemplateId: templateData.id, // 新增
+        templateVersion: templateData.version, // 新增
         model: {
           ttsModelId: templateData.ttsModelId || this.form.model.ttsModelId,
           vadModelId: templateData.vadModelId || this.form.model.vadModelId,

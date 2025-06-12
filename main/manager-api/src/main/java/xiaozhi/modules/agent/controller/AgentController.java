@@ -115,6 +115,8 @@ public class AgentController {
             entity.setChatHistoryConf(template.getChatHistoryConf());
             entity.setLangCode(template.getLangCode());
             entity.setLanguage(template.getLanguage());
+            entity.setAgentTemplateId(template.getId());
+            entity.setTemplateVersion(template.getVersion());
         }
 
         // 设置用户ID和创建者信息
@@ -210,6 +212,12 @@ public class AgentController {
         }
         if (dto.getBirthday() != null) {
             existingEntity.setBirthday(dto.getBirthday());
+        }
+        if (dto.getAgentTemplateId() != null) {
+            existingEntity.setAgentTemplateId(dto.getAgentTemplateId());
+        }
+        if (dto.getTemplateVersion() != null) {
+            existingEntity.setTemplateVersion(dto.getTemplateVersion());
         }
 
         // 设置更新者信息
@@ -348,9 +356,33 @@ public class AgentController {
     @Operation(summary = "删除智能体模板")
     @RequiresPermissions("sys:role:superAdmin")
     public Result<Void> deleteTemplate(@PathVariable String id) {
+        // 判断是否有智能体正在使用该模板
+        // 需在AgentService中实现countByAgentTemplateId方法
+        Long count = agentService.countByAgentTemplateId(id);
+        if (count != null && count > 0) {
+            return new Result<Void>().error("该模板正在被智能体使用，无法删除");
+        }
         agentTemplateService.removeById(id);
         return new Result<>();
     }
+
+    // 设置默认模板
+    @PutMapping("/template/default/{id}")
+    @Operation(summary = "设置默认智能体模板")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<Void> setDefaultTemplate(@PathVariable String id) {
+        AgentTemplateEntity template = agentTemplateService.getById(id);
+        if (template == null) {
+            return new Result<Void>().error("模板不存在");
+        }
+        // 清除之前的默认模板
+        agentTemplateService.clearDefaultTemplate();
+        // 设置新的默认模板
+        template.setIsDefault(1);
+        agentTemplateService.updateById(template);
+        return new Result<>();
+    }
+
 
     // 通过ID获取智能体模板
     @GetMapping("/template/{id}")

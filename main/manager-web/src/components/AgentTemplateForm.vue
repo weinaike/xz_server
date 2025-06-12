@@ -21,6 +21,9 @@
         <el-form-item label="交互语种" prop="language" required>
           <el-input v-model="form.language" maxlength="10" placeholder="如 中文" />
         </el-form-item>
+        <el-form-item label="版本号" prop="version">
+          <el-input v-model="form.version" readonly placeholder="请输入版本号" />
+        </el-form-item>
       </div>
       <div class="form-column">
         <el-form-item label="语音活动检测" prop="vadModelId" required>
@@ -69,7 +72,8 @@ import Api from '@/apis/api';
 export default {
   name: 'AgentTemplateForm',
   props: {
-    value: { type: Object, required: true }
+    value: { type: Object, required: true },
+    isEdit: { type: Boolean, default: false }
   },
   data() {
     return {

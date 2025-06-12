@@ -207,4 +207,19 @@ export default {
                 });
             }).send();
     },
+    // 设置默认智能体模板
+    setDefaultAgentTemplate(templateId, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/template/default/${templateId}`)
+            .method('PUT')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail(() => {
+                RequestService.reAjaxFun(() => {
+                    this.setDefaultAgentTemplate(templateId, callback);
+                });
+            }).send();
+    },
 }

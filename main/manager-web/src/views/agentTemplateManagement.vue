@@ -42,7 +42,14 @@
           </template>
 
           <template v-else>
-            <AgentTemplateItem v-for="(item, index) in templates" :key="index" :template="item" @edit="handleEditTemplate" @delete="handleDeleteTemplate" />
+            <AgentTemplateItem
+              v-for="(item, index) in templates"
+              :key="index"
+              :template="item"
+              @edit="handleEditTemplate"
+              @delete="handleDeleteTemplate"
+              @set-default="handleSetDefault"
+            />
           </template>
         </div>
       </div>
@@ -69,7 +76,7 @@ import HeaderBar from '@/components/HeaderBar.vue';
 import VersionFooter from '@/components/VersionFooter.vue';
 
 export default {
-  name: 'HomePage',
+  name: 'AgentTemplate',
   components: { AgentTemplateItem, AddAgentTemplateDialog, EditAgentTemplateDialog, HeaderBar, VersionFooter },
   data() {
     return {
@@ -116,6 +123,16 @@ export default {
     handleAddTemplate(res) {
       this.fetchAgentTemplateList();
       this.addDeviceDialogVisible = false;
+    },
+    handleSetDefault(templateId) {
+      Api.agent.setDefaultAgentTemplate(templateId, (res) => {
+        if (res.data && res.data.code === 0) {
+          this.$message.success({ message: '设置默认模板成功', showClose: true });
+          this.fetchAgentTemplateList();
+        } else {
+          this.$message.error({ message: res.data?.msg || '设置默认模板失败', showClose: true });
+        }
+      });
     },
     handleSearch(regex) {
       this.isSearching = true;

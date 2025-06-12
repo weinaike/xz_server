@@ -118,6 +118,11 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
             dto.setNickName(agent.getNickName());
             dto.setSex(agent.getSex());
             dto.setBirthday(agent.getBirthday());
+
+            // 新增：智能体模板ID和版本
+            dto.setAgentTemplateId(agent.getAgentTemplateId());
+            dto.setTemplateVersion(agent.getTemplateVersion());
+
             return dto;
         }).collect(Collectors.toList());
     }
@@ -168,5 +173,15 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
 
         // 检查是否是智能体的所有者
         return userId.equals(agent.getUserId());
+    }
+
+    @Override
+    public Long countByAgentTemplateId(String agentTemplateId) {
+        if (StringUtils.isBlank(agentTemplateId)) {
+            return 0L;
+        }
+        QueryWrapper<AgentEntity> wrapper = new QueryWrapper<>();
+        wrapper.eq("agent_template_id", agentTemplateId);
+        return agentDao.selectCount(wrapper);
     }
 }

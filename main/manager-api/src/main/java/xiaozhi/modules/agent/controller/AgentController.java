@@ -117,6 +117,8 @@ public class AgentController {
             entity.setLanguage(template.getLanguage());
             entity.setAgentTemplateId(template.getId());
             entity.setTemplateVersion(template.getVersion());
+            entity.setAgentTemplateId(template.getId());
+            entity.setTemplateVersion(template.getVersion());
         }
 
         // 设置用户ID和创建者信息

@@ -30,22 +30,75 @@
             </div>
           </div>
         </div>
-        <div class="device-list-container">
-          <template v-if="isLoading">
-            <div v-for="i in skeletonCount" :key="'skeleton-' + i" class="skeleton-item">
-              <div class="skeleton-image"></div>
-              <div class="skeleton-content">
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line-short"></div>
-              </div>
-            </div>
-          </template>
+        
+        <el-tabs v-model="activeTab" @tab-click="handleTabClick" class="agent-tabs">
+          
+          <el-tab-pane label="我的智能体" name="my">
+            <div class="device-list-container">
+              <template v-if="isLoading">
+                <div v-for="i in skeletonCount" :key="'skeleton-' + i" class="skeleton-item">
+                  <div class="skeleton-image"></div>
+                  <div class="skeleton-content">
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line-short"></div>
+                  </div>
+                </div>
+              </template>
 
-          <template v-else>
-            <DeviceItem v-for="(item, index) in devices" :key="index" :device="item" @configure="goToRoleConfig"
-              @deviceManage="handleDeviceManage" @delete="handleDeleteAgent" @chat-history="handleShowChatHistory" />
-          </template>
-        </div>
+              <template v-else>
+                <DeviceItem v-for="(item, index) in devices" :key="index" :device="item" @configure="goToRoleConfig"
+                  @deviceManage="handleDeviceManage" @delete="handleDeleteAgent" @chat-history="handleShowChatHistory" />
+              </template>
+            </div>
+          </el-tab-pane>
+          <!-- 所有智能体 -->
+          <el-tab-pane v-if="isSuperAdmin" label="所有智能体" name="all">
+            <div class="device-list-container" style="display: block; padding: 0;">
+              <template v-if="isLoadingAll">
+                <div v-for="i in skeletonCount" :key="'skeleton-all-' + i" class="skeleton-item">
+                  <div class="skeleton-image"></div>
+                  <div class="skeleton-content">
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line-short"></div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <!-- el-table展示所有智能体 -->
+                <el-table :data="allDevices" style="width: 100%" border>
+                  <el-table-column prop="userId" label="用户ID" min-width="120" />
+                  <el-table-column prop="agentName" label="智能体名" min-width="150" />
+                  <el-table-column prop="agentTemplateId" label="智能体模板ID" min-width="180" />
+                  <el-table-column prop="templateVersion" label="智能体模板版本" min-width="120" />
+                  <el-table-column label="操作" min-width="140">
+                    <template slot-scope="scope">
+                      <el-button
+                        size="mini"
+                        type="primary"
+                        :disabled="!isTemplateUpdateAvailable(scope.row)"
+                        @click="handleUpdateTemplate(scope.row)"
+                      >
+                        更新模板
+                      </el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <!-- 底部分页 -->
+                <div class="pagination-container" v-if="totalCount > 0">
+                  <el-pagination
+                    @size-change="handleSizeChange"
+                    @current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 50, 100]"
+                    :page-size="pageSize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="totalCount">
+                  </el-pagination>
+                </div>
+              </template>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
       <AddWisdomBodyDialog :visible.sync="addDeviceDialogVisible" @confirm="handleWisdomBodyAdded" />
     </el-main>
@@ -64,6 +117,7 @@ import ChatHistoryDialog from '@/components/ChatHistoryDialog.vue';
 import DeviceItem from '@/components/DeviceItem.vue';
 import HeaderBar from '@/components/HeaderBar.vue';
 import VersionFooter from '@/components/VersionFooter.vue';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'HomePage',
@@ -79,12 +133,32 @@ export default {
       skeletonCount: localStorage.getItem('skeletonCount') || 8,
       showChatHistory: false,
       currentAgentId: '',
-      currentAgentName: ''
+      currentAgentName: '',
+      // 管理员相关数据
+      activeTab: 'my',
+      allDevices: [],
+      isLoadingAll: true,
+      // 分页相关
+      currentPage: 1,
+      pageSize: 20,
+      totalCount: 0,
+      agentTemplates: [] // 所有模板信息
+    }
+  },
+
+  computed: {
+    ...mapGetters(['getIsSuperAdmin']),
+    isSuperAdmin() {
+      return this.getIsSuperAdmin;
     }
   },
 
   mounted() {
     this.fetchAgentList();
+    if (this.isSuperAdmin) {
+      this.fetchAllAgentList();
+      this.fetchAgentTemplates();
+    }
   },
 
   methods: {
@@ -149,6 +223,88 @@ export default {
         console.error('Failed to fetch agent list:', error);
         this.isLoading = false;
       });
+    },
+    // 获取所有智能体列表（管理员）
+    fetchAllAgentList() {
+      this.isLoadingAll = true;
+      const params = {
+        page: this.currentPage,
+        limit: this.pageSize
+      };
+      
+      Api.agent.getAdminAgentList(params, ({ data }) => {
+        if (data?.data) {
+          this.allDevices = data.data.list || [];
+          this.totalCount = data.data.total || 0;
+        }
+        this.isLoadingAll = false;
+      }, (error) => {
+        console.error('Failed to fetch all agent list:', error);
+        this.isLoadingAll = false;
+      });
+    },
+    // 获取模板列表
+    fetchAgentTemplates() {
+      Api.agent.getAgentTemplate(({ data }) => {
+        if (data?.data) {
+          this.agentTemplates = data.data;
+        }
+      });
+    },
+    isTemplateUpdateAvailable(row) {
+      const tpl = this.agentTemplates.find(t => t.id === row.agentTemplateId);
+      return tpl && tpl.version > row.templateVersion;
+    },
+    handleUpdateTemplate(row) {
+      const tpl = this.agentTemplates.find(t => t.id === row.agentTemplateId);
+      if (!tpl) {
+        this.$message.error('未找到对应模板');
+        return;
+      }
+
+      // 构造更新数据，只用模板最新字段覆盖智能体
+      const updateData = {
+        asrModelId: tpl.asrModelId,
+        vadModelId: tpl.vadModelId,
+        llmModelId: tpl.llmModelId,
+        ttsModelId: tpl.ttsModelId,
+        ttsVoiceId: tpl.ttsVoiceId,
+        memModelId: tpl.memModelId,
+        intentModelId: tpl.intentModelId,
+        chatHistoryConf: tpl.chatHistoryConf,
+        systemPrompt: tpl.systemPrompt,
+        summaryMemory: tpl.summaryMemory,
+        langCode: tpl.langCode,
+        language: tpl.language,
+        agentTemplateId: tpl.id,
+        templateVersion: tpl.version
+      };
+      Api.agent.updateAgentConfig(row.id, updateData, (res) => {
+        if (res.data.code === 0) {
+          this.$message.success('模板已更新');
+          this.fetchAllAgentList();
+        } else {
+          this.$message.error(res.data.msg || '更新失败');
+        }
+      });
+    },
+    // 标签页切换
+    handleTabClick(tab) {
+      this.activeTab = tab.name;
+      if (tab.name === 'all' && this.allDevices.length === 0) {
+        this.fetchAllAgentList();
+      }
+    },
+    // 分页大小改变
+    handleSizeChange(size) {
+      this.pageSize = size;
+      this.currentPage = 1;
+      this.fetchAllAgentList();
+    },
+    // 当前页改变
+    handleCurrentChange(page) {
+      this.currentPage = page;
+      this.fetchAllAgentList();
     },
     // 删除智能体
     handleDeleteAgent(agentId) {
@@ -298,6 +454,92 @@ export default {
   color: #979db1;
   text-align: center;
   /* 居中显示 */
+}
+
+/* 骨架屏动画 */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 管理员标签页样式 */
+.admin-tabs {
+  margin-top: 30px;
+}
+
+.agent-tabs {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.agent-tabs::v-deep .el-tabs__header {
+  margin-bottom: 20px;
+}
+
+.agent-tabs::v-deep .el-tabs__nav-wrap::after {
+  background-color: #f0f2f5;
+}
+
+.agent-tabs::v-deep .el-tabs__item {
+  font-size: 16px;
+  font-weight: 500;
+  color: #818cae;
+}
+
+.agent-tabs::v-deep .el-tabs__item.is-active {
+  color: #5778ff;
+}
+
+.agent-tabs::v-deep .el-tabs__active-bar {
+  background-color: #5778ff;
+}
+
+/* 分页样式 */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.pagination-top {
+  margin-bottom: 30px;
+}
+
+.pagination-container::v-deep .el-pagination {
+  color: #818cae;
+}
+
+.pagination-container::v-deep .el-pagination .el-pager li {
+  background-color: #fff;
+  border: 1px solid #e4e6ef;
+  color: #818cae;
+}
+
+.pagination-container::v-deep .el-pagination .el-pager li.active {
+  background-color: #5778ff;
+  color: #fff;
+  border-color: #5778ff;
+}
+
+.pagination-container::v-deep .el-pagination .btn-prev,
+.pagination-container::v-deep .el-pagination .btn-next {
+  background-color: #fff;
+  border: 1px solid #e4e6ef;
+  color: #818cae;
+}
+
+.pagination-container::v-deep .el-pagination .btn-prev:hover,
+.pagination-container::v-deep .el-pagination .btn-next:hover {
+  color: #5778ff;
+}
+
+/* 在所有智能体标签页中，使用不同的布局 */
+.admin-tabs .el-tab-pane[id="pane-all"] .device-list-container {
+  display: block;
+  grid-template-columns: none;
 }
 
 /* 骨架屏动画 */

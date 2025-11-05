@@ -72,6 +72,9 @@ public class ConfigServiceImpl implements ConfigService {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 result,
                 isCache);
 
@@ -143,6 +146,9 @@ public class ConfigServiceImpl implements ConfigService {
                 agent.getTtsModelId(),
                 agent.getMemModelId(),
                 agent.getIntentModelId(),
+                agent.getNickName(),
+                agent.getSex(),
+                agent.getBirthday(),
                 result,
                 true);
 
@@ -223,7 +229,9 @@ public class ConfigServiceImpl implements ConfigService {
     /**
      * 构建模块配置
      * 
+     * @param assistantName 智能体名称
      * @param prompt        提示词
+     * @param summaryMemory 总结记忆
      * @param voice         音色
      * @param vadModelId    VAD模型ID
      * @param asrModelId    ASR模型ID
@@ -231,7 +239,11 @@ public class ConfigServiceImpl implements ConfigService {
      * @param ttsModelId    TTS模型ID
      * @param memModelId    记忆模型ID
      * @param intentModelId 意图模型ID
+     * @param nickName      小主名称
+     * @param sex           性别
+     * @param birthday      生日
      * @param result        结果Map
+     * @param isCache       是否缓存
      */
     private void buildModuleConfig(
             String assistantName,
@@ -244,6 +256,9 @@ public class ConfigServiceImpl implements ConfigService {
             String ttsModelId,
             String memModelId,
             String intentModelId,
+            String nickName,
+            String sex,
+            String birthday,
             Map<String, Object> result,
             boolean isCache) {
         Map<String, String> selectedModule = new HashMap<>();
@@ -316,9 +331,50 @@ public class ConfigServiceImpl implements ConfigService {
 
         result.put("selected_module", selectedModule);
         if (StringUtils.isNotBlank(prompt)) {
-            prompt = prompt.replace("{{assistant_name}}", StringUtils.isBlank(assistantName) ? "小智" : assistantName);
+            prompt = prompt.replace("{{assistant_name}}", StringUtils.isBlank(assistantName) ? "小新" : assistantName);
+            prompt = prompt.replace("{{nick_name}}", StringUtils.isBlank(nickName) ? "小主" : nickName);
+            prompt = prompt.replace("{{sex}}", StringUtils.isBlank(sex) ? "" : ("1".equals(sex) ? "是个小男孩" : "2".equals(sex) ? "是个小女还" : ""));
+            prompt = prompt.replace("{{age}}", calculateAge(birthday));
         }
         result.put("prompt", prompt);
         result.put("summaryMemory", summaryMemory);
+    }
+
+    /**
+     * 根据生日计算年龄
+     * 
+     * @param birthday 生日，格式为 yyyyMMdd
+     * @return 年龄字符串，如果生日为空或格式错误则返回空字符串
+     */
+    private String calculateAge(String birthday) {
+        if (StringUtils.isBlank(birthday)) {
+            return "";
+        }
+        
+        try {
+            // 解析生日 (格式: yyyyMMdd)
+            int birthYear = Integer.parseInt(birthday.substring(0, 4));
+            int birthMonth = Integer.parseInt(birthday.substring(4, 6));
+            int birthDay = Integer.parseInt(birthday.substring(6, 8));
+            
+            // 获取当前日期
+            java.time.LocalDate now = java.time.LocalDate.now();
+            int currentYear = now.getYear();
+            int currentMonth = now.getMonthValue();
+            int currentDay = now.getDayOfMonth();
+            
+            // 计算年龄
+            int age = currentYear - birthYear;
+            
+            // 如果还没到生日，年龄减1
+            if (currentMonth < birthMonth || (currentMonth == birthMonth && currentDay < birthDay)) {
+                age--;
+            }
+            
+            return String.valueOf(age);
+        } catch (Exception e) {
+            // 如果解析失败，返回空字符串
+            return "";
+        }
     }
 }

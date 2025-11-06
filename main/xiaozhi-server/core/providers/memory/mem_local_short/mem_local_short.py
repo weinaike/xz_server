@@ -138,13 +138,6 @@ short_term_memory_prompt_only_content = """
 - 诗歌能力：xx（如 孩子唐诗会背xxx)
 - 唱歌能力：xx (如 会唱xxx)
 
-## 互动小贴士（为AI提供的快速参考）
-- 喜欢的互动模式：xxx()
-- 高效开场白：xx（如， “今天和毛毛有什么新冒险吗？”、“奥特曼先生最近好吗？”）【根据最近的最爱和项目进行调整】
-- 增强 engagement 的方法：立即进入角色扮演（如“船长，请下达指令！”），使用夸张的音效。【根据最近的最爱和项目进行调整】
-- 避免的话题：暂无。
-- 上次对话亮点：他主动创造了“用彩虹桥修复飞船”的情节，非常有想象力，及时给予了赞扬。
-
 ···
 """
 
@@ -229,6 +222,7 @@ class MemoryProvider(MemoryProviderBase):
         # 当前时间
         time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         msgStr += f"当前时间：{time_str}"
+        msgStr += "\n请根据以上对话内容，更新记忆内容。"
 
         if self.save_to_file:
             result = self.llm.response_no_stream(

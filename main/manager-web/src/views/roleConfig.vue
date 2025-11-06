@@ -47,11 +47,11 @@
                     </el-form-item>
                     <el-form-item label="角色介绍：">
                       <el-input type="textarea" rows="9" resize="none" placeholder="请输入内容" v-model="form.systemPrompt"
-                        maxlength="2000" show-word-limit class="form-textarea" />
+                        maxlength="20000" show-word-limit class="form-textarea" />
                     </el-form-item>
 
-                    <el-form-item label="记忆：">
-                      <el-input type="textarea" rows="6" resize="none" v-model="form.summaryMemory" maxlength="2000"
+                    <el-form-item label="记忆：">s
+                      <el-input type="textarea" rows="6" resize="none" v-model="form.summaryMemory" maxlength="20000"
                         show-word-limit class="form-textarea"
                         :disabled="form.model.memModelId !== 'Memory_mem_local_short'" />
                     </el-form-item>

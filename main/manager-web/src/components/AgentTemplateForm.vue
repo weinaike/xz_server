@@ -6,7 +6,7 @@
           <el-input v-model="form.agentName" maxlength="20" placeholder="请输入模板名称" />
         </el-form-item>
         <el-form-item label="角色设定参数" prop="systemPrompt" required>
-          <el-input type="textarea" v-model="form.systemPrompt" rows="8" maxlength="2000" show-word-limit placeholder="请输入角色设定参数" />
+          <el-input type="textarea" v-model="form.systemPrompt" rows="8" maxlength="20000" show-word-limit placeholder="请输入角色设定参数" />
         </el-form-item>
         <el-form-item label="聊天记录配置" prop="chatHistoryConf" required>
           <el-radio-group v-model="form.chatHistoryConf">

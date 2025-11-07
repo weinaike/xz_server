@@ -54,6 +54,7 @@ class Dialogue:
         """更新或添加系统消息"""
         # 查找第一个系统消息
         system_msg = next((msg for msg in self.dialogue if msg.role == "system"), None)
+        new_content += f"\n当前时间：{self.current_time}"
         if system_msg:
             system_msg.content = new_content
         else:

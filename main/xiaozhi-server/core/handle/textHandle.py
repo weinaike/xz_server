@@ -1,4 +1,5 @@
 import json
+import random
 from core.handle.abortHandle import handleAbortMessage
 from core.handle.helloHandle import handleHelloMessage
 from core.utils.util import remove_punctuation_and_length, filter_sensitive_info
@@ -64,7 +65,13 @@ async def handleTextMessage(conn, message):
                     else:
                         # 上报纯文字数据（复用ASR上报功能，但不提供音频数据）
                         enqueue_asr_report(conn, original_text, [])
-                        # 否则需要LLM对文字内容进行答复
+                        # 替换 original_text 内容， 更好引导模型回答。 引入随机性： 80% 概率用模板1， 20% 概率用模板2
+                        # 模板1： `你好， 我们有多好好玩的对话主题？你有什么推荐吗？`
+                        # 模板2： `你好， 我在想，我们可以聊聊不常聊的，新的、有趣的话题，你有什么建议吗？`
+                        if random.random() < 0.8:
+                            original_text = f"你好， 我们有多好好玩的对话主题？你有什么推荐吗？"
+                        else:
+                            original_text = f"你好， 我在想，我们可以聊聊不常聊的，新的、有趣的话题，你有什么建议吗？"
                         await startToChat(conn, original_text)
         elif msg_json["type"] == "iot":
             conn.logger.bind(tag=TAG).info(f"收到iot消息：{message}")

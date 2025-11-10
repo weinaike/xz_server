@@ -37,27 +37,41 @@ class WebSocketServer:
         port = int(server_config.get("port", 8000))
 
         async with websockets.serve(
-            self._handle_connection, host, port, process_request=self._http_response
+            self._handle_connection, 
+            host, 
+            port, 
+            process_request=self._http_response,
+            logger=None  # 禁用websockets的默认日志记录
         ):
             await asyncio.Future()
 
     async def _handle_connection(self, websocket):
-        """处理新连接，每次创建独立的ConnectionHandler"""
-        # 创建ConnectionHandler时传入当前server实例
-        handler = ConnectionHandler(
-            self.config,
-            self._vad,
-            self._asr,
-            self._llm,
-            self._memory,
-            self._intent,
-            self,  # 传入server实例
-        )
-        self.active_connections.add(handler)
+        """处理新连接,每次创建独立的ConnectionHandler"""
         try:
-            await handler.handle_connection(websocket)
-        finally:
-            self.active_connections.discard(handler)
+            # 创建ConnectionHandler时传入当前server实例
+            handler = ConnectionHandler(
+                self.config,
+                self._vad,
+                self._asr,
+                self._llm,
+                self._memory,
+                self._intent,
+                self,  # 传入server实例
+            )
+            self.active_connections.add(handler)
+            try:
+                await handler.handle_connection(websocket)
+            finally:
+                self.active_connections.discard(handler)
+        except websockets.exceptions.ConnectionClosedError:
+            # 客户端异常断开连接，正常情况，不记录
+            pass
+        except websockets.exceptions.InvalidMessage:
+            # 无效的WebSocket握手请求（如非WebSocket的HTTP请求），不记录堆栈
+            self.logger.bind(tag=TAG).debug("收到无效的WebSocket握手请求")
+        except Exception as e:
+            # 其他未预期的异常才记录详细信息
+            self.logger.bind(tag=TAG).error(f"处理连接时发生异常: {type(e).__name__}: {str(e)}")
 
     async def _http_response(self, websocket, request_headers):
         # 检查是否为 WebSocket 升级请求

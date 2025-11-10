@@ -1,4 +1,5 @@
 import json
+import time
 import random
 from core.handle.abortHandle import handleAbortMessage
 from core.handle.helloHandle import handleHelloMessage
@@ -71,9 +72,9 @@ async def handleTextMessage(conn, message):
                         if original_text == "你好":
                             time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                             if random.random() < 0.8:
-                                original_text = f"你好， 我们有多好好玩的对话主题？你有什么推荐吗？现在时间是{time_str}"
+                                original_text = f"你好， 我们有多好好玩的对话主题？你有什么推荐吗(只推荐一个)？现在时间是{time_str}"
                             else:
-                                original_text = f"你好， 我在想，我们可以聊聊不常聊的，新的、有趣的话题，你有什么建议吗？"
+                                original_text = f"你好， 我在想，我们可以聊聊不常聊的，新的、有趣的话题，你有什么建议吗(只推荐一个)？现在时间是{time_str}"
                         await startToChat(conn, original_text)
         elif msg_json["type"] == "iot":
             conn.logger.bind(tag=TAG).info(f"收到iot消息：{message}")

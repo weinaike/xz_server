@@ -209,8 +209,8 @@ class MemoryProvider(MemoryProviderBase):
         if self.llm is None:
             logger.bind(tag=TAG).error("LLM is not set for memory provider")
             return None
-
-        if len(msgs) < 2:
+        if len(msgs) < 20:
+            logger.bind(tag=TAG).info("对话轮数不足20轮，不保存短期记忆")
             return None
 
         msgStr = ""

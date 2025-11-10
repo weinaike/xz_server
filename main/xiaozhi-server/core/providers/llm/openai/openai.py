@@ -74,6 +74,7 @@ class LLMProvider(LLMProviderBase):
 
         except Exception as e:
             logger.bind(tag=TAG).error(f"Error in response generation: {e}")
+            yield f"不好意思，没听清楚，请你再说一遍！"
 
     def response_with_functions(self, session_id, dialogue, functions=None):
         try:
@@ -96,4 +97,4 @@ class LLMProvider(LLMProviderBase):
 
         except Exception as e:
             logger.bind(tag=TAG).error(f"Error in function call streaming: {e}")
-            yield f"【OpenAI服务响应异常: {e}】", None
+            yield f"不好意思，没听清楚，请你再说一遍！", None

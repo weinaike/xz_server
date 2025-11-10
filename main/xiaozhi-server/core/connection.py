@@ -547,31 +547,43 @@ class ConnectionHandler:
         # 更新系统prompt至上下文
         self.dialogue.update_system_message(self.prompt)
 
-    def chat(self, query, tool_call=False):
+    def chat(self, query, depth=0):
         self.logger.bind(tag=TAG).info(f"大模型收到用户消息: {query}")
         self.llm_finish_task = False
 
-        if not tool_call:
+        # 为最顶层时新建会话ID和发送FIRST请求
+        if depth == 0:
+            self.sentence_id = str(uuid.uuid4().hex)
             self.dialogue.put(Message(role="user", content=query))
+            self.tts.tts_text_queue.put(
+                TTSMessageDTO(
+                    sentence_id=self.sentence_id,
+                    sentence_type=SentenceType.FIRST,
+                    content_type=ContentType.ACTION,
+                )
+            )
 
         # Define intent functions
         functions = None
         if self.intent_type == "function_call" and hasattr(self, "func_handler"):
             functions = self.func_handler.get_functions()
         response_message = []
+        # 使用带记忆的对话
+        memory_str = None
+        if self.memory is not None:
+            future = asyncio.run_coroutine_threadsafe(
+                self.memory.query_memory(query), self.loop
+            )
+            memory_str = future.result()
 
+
+        # 处理流式响应
+        tool_call_flag = False
+        function_name = None
+        function_id = None
+        function_arguments = ""
+        content_arguments = ""
         try:
-            # 使用带记忆的对话
-            memory_str = None
-            if self.memory is not None:
-                future = asyncio.run_coroutine_threadsafe(
-                    self.memory.query_memory(query), self.loop
-                )
-                memory_str = future.result()
-
-            uuid_str = str(uuid.uuid4()).replace("-", "")
-            self.sentence_id = uuid_str
-
             if functions is not None:
                 # 使用支持functions的streaming接口
                 llm_responses = self.llm.response_with_functions(
@@ -584,122 +596,110 @@ class ConnectionHandler:
                     self.session_id,
                     self.dialogue.get_llm_dialogue_with_memory(memory_str),
                 )
-        except Exception as e:
-            self.logger.bind(tag=TAG).error(f"LLM 处理出错 {query}: {e}")
-            return None
 
-        # 处理流式响应
-        tool_call_flag = False
-        function_name = None
-        function_id = None
-        function_arguments = ""
-        content_arguments = ""
-        text_index = 0
+            for response in llm_responses:
+                if self.client_abort:
+                    break
+                if functions is not None:
+                    content, tools_call = response
+                    if "content" in response:
+                        content = response["content"]
+                        tools_call = None
+                    if content is not None and len(content) > 0:
+                        content_arguments += content
 
-        for response in llm_responses:
-            if functions is not None:
-                content, tools_call = response
-                if "content" in response:
-                    content = response["content"]
-                    tools_call = None
+                    if not tool_call_flag and content_arguments.startswith("<tool_call>"):
+                        # print("content_arguments", content_arguments)
+                        tool_call_flag = True
+
+                    if tools_call is not None:
+                        tool_call_flag = True
+                        if tools_call[0].id is not None:
+                            function_id = tools_call[0].id
+                        if tools_call[0].function.name is not None:
+                            function_name = tools_call[0].function.name
+                        if tools_call[0].function.arguments is not None:
+                            function_arguments += tools_call[0].function.arguments
+                else:
+                    content = response
                 if content is not None and len(content) > 0:
-                    content_arguments += content
+                    if not tool_call_flag:
+                        response_message.append(content)
 
-                if not tool_call_flag and content_arguments.startswith("<tool_call>"):
-                    # print("content_arguments", content_arguments)
-                    tool_call_flag = True
-
-                if tools_call is not None:
-                    tool_call_flag = True
-                    if tools_call[0].id is not None:
-                        function_id = tools_call[0].id
-                    if tools_call[0].function.name is not None:
-                        function_name = tools_call[0].function.name
-                    if tools_call[0].function.arguments is not None:
-                        function_arguments += tools_call[0].function.arguments
-            else:
-                content = response
-            if content is not None and len(content) > 0:
-                if not tool_call_flag:
-                    response_message.append(content)
-                    if self.client_abort:
-                        break
-
-                    if text_index == 0:
                         self.tts.tts_text_queue.put(
                             TTSMessageDTO(
                                 sentence_id=self.sentence_id,
-                                sentence_type=SentenceType.FIRST,
-                                content_type=ContentType.ACTION,
+                                sentence_type=SentenceType.MIDDLE,
+                                content_type=ContentType.TEXT,
+                                content_detail=content,
                             )
                         )
-                    self.tts.tts_text_queue.put(
-                        TTSMessageDTO(
-                            sentence_id=self.sentence_id,
-                            sentence_type=SentenceType.MIDDLE,
-                            content_type=ContentType.TEXT,
-                            content_detail=content,
-                        )
-                    )
-                    text_index += 1
-        # 处理function call
-        if tool_call_flag:
-            bHasError = False
-            if function_id is None:
-                a = extract_json_from_string(content_arguments)
-                if a is not None:
-                    try:
-                        content_arguments_json = json.loads(a)
-                        function_name = content_arguments_json["name"]
-                        function_arguments = json.dumps(
-                            content_arguments_json["arguments"], ensure_ascii=False
-                        )
-                        function_id = str(uuid.uuid4().hex)
-                    except Exception as e:
+
+            # 处理function call
+            if tool_call_flag:
+                bHasError = False
+                if function_id is None:
+                    a = extract_json_from_string(content_arguments)
+                    if a is not None:
+                        try:
+                            content_arguments_json = json.loads(a)
+                            function_name = content_arguments_json["name"]
+                            function_arguments = json.dumps(
+                                content_arguments_json["arguments"], ensure_ascii=False
+                            )
+                            function_id = str(uuid.uuid4().hex)
+                        except Exception as e:
+                            bHasError = True
+                            response_message.append(a)
+                    else:
                         bHasError = True
-                        response_message.append(a)
-                else:
-                    bHasError = True
-                    response_message.append(content_arguments)
-                if bHasError:
-                    self.logger.bind(tag=TAG).error(
-                        f"function call error: {content_arguments}"
-                    )
-            if not bHasError:
-                response_message.clear()
-                self.logger.bind(tag=TAG).debug(
-                    f"function_name={function_name}, function_id={function_id}, function_arguments={function_arguments}"
-                )
-                function_call_data = {
-                    "name": function_name,
-                    "id": function_id,
-                    "arguments": function_arguments,
-                }
+                        response_message.append(content_arguments)
+                    if bHasError:
+                        self.logger.bind(tag=TAG).error(
+                            f"function call error: {content_arguments}"
+                        )
+                if not bHasError:
 
-                # 处理MCP工具调用
-                if self.mcp_manager.is_mcp_tool(function_name):
-                    result = self._handle_mcp_tool_call(function_call_data)
-                else:
-                    # 处理系统函数
-                    result = self.func_handler.handle_llm_function_call(
-                        self, function_call_data
+                    if len(response_message) > 0:
+                        self.dialogue.put(
+                            Message(role="assistant", content="".join(response_message))
+                        )                    
+                    response_message.clear()
+                    self.logger.bind(tag=TAG).debug(
+                        f"function_name={function_name}, function_id={function_id}, function_arguments={function_arguments}"
                     )
-                self._handle_function_result(result, function_call_data)
+                    function_call_data = {
+                        "name": function_name,
+                        "id": function_id,
+                        "arguments": function_arguments,
+                    }
 
+                    # 处理MCP工具调用
+                    if self.mcp_manager.is_mcp_tool(function_name):
+                        result = self._handle_mcp_tool_call(function_call_data)
+                    else:
+                        # 处理系统函数
+                        result = self.func_handler.handle_llm_function_call(
+                            self, function_call_data
+                        )
+                    self._handle_function_result(result, function_call_data, depth=depth)
+        except Exception as e:
+            self.logger.bind(tag=TAG).error(f"LLM 流式响应处理出错: {e}")
         # 存储对话内容
         if len(response_message) > 0:
             self.dialogue.put(
                 Message(role="assistant", content="".join(response_message))
             )
-        if text_index > 0:
+        
+        if depth == 0:
+            self.llm_finish_task = True
             self.tts.tts_text_queue.put(
                 TTSMessageDTO(
                     sentence_id=self.sentence_id,
                     sentence_type=SentenceType.LAST,
                     content_type=ContentType.ACTION,
                 )
-            )
-        self.llm_finish_task = True
+            )            
         self.logger.bind(tag=TAG).debug(
             json.dumps(self.dialogue.get_llm_dialogue(), indent=4, ensure_ascii=False)
         )
@@ -748,7 +748,7 @@ class ConnectionHandler:
 
         return ActionResponse(action=Action.REQLLM, result="工具调用出错", response="")
 
-    def _handle_function_result(self, result, function_call_data):
+    def _handle_function_result(self, result, function_call_data, depth):
         if result.action == Action.RESPONSE:  # 直接回复前端
             text = result.response
             self.tts.tts_one_sentence(self, ContentType.TEXT, content_detail=text)
@@ -785,7 +785,7 @@ class ConnectionHandler:
                         content=text,
                     )
                 )
-                self.chat(text, tool_call=True)
+                self.chat(text, depth=depth+1)
         elif result.action == Action.NOTFOUND or result.action == Action.ERROR:
             text = result.result
             self.tts.tts_one_sentence(self, ContentType.TEXT, content_detail=text)

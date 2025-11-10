@@ -254,42 +254,48 @@ class TTSProviderBase(ABC):
             await self.ws.close()
 
     def _get_segment_text(self):
-        # 合并当前全部文本并处理未分割部分
-        full_text = "".join(self.tts_text_buff)
-        current_text = full_text[self.processed_chars :]  # 从未处理的位置开始
-        last_punct_pos = -1
+        try:
+            # 合并当前全部文本并处理未分割部分
+            full_text = "".join(self.tts_text_buff)
+            current_text = full_text[self.processed_chars :]  # 从未处理的位置开始
+            last_punct_pos = -1
 
-        # 根据是否是第一句话选择不同的标点符号集合
-        punctuations_to_use = (
-            self.first_sentence_punctuations
-            if self.is_first_sentence
-            else self.punctuations
-        )
-
-        for punct in punctuations_to_use:
-            pos = current_text.rfind(punct)
-            if (pos != -1 and last_punct_pos == -1) or (
-                pos != -1 and pos < last_punct_pos
-            ):
-                last_punct_pos = pos
-
-        if last_punct_pos != -1:
-            segment_text_raw = current_text[: last_punct_pos + 1]
-            segment_text = textUtils.get_string_no_punctuation_or_emoji(
-                segment_text_raw
+            # 根据是否是第一句话选择不同的标点符号集合
+            punctuations_to_use = (
+                self.first_sentence_punctuations
+                if self.is_first_sentence
+                else self.punctuations
             )
-            self.processed_chars += len(segment_text_raw)  # 更新已处理字符位置
 
-            # 如果是第一句话，在找到第一个逗号后，将标志设置为False
-            if self.is_first_sentence:
-                self.is_first_sentence = False
+            for punct in punctuations_to_use:
+                pos = current_text.rfind(punct)
+                if (pos != -1 and last_punct_pos == -1) or (
+                    pos != -1 and pos < last_punct_pos
+                ):
+                    last_punct_pos = pos
 
-            return segment_text
-        elif self.tts_stop_request and current_text:
-            segment_text = current_text
-            self.is_first_sentence = True  # 重置标志
-            return segment_text
-        else:
+            if last_punct_pos != -1:
+                segment_text_raw = current_text[: last_punct_pos + 1]
+                segment_text = textUtils.get_string_no_punctuation_or_emoji(
+                    segment_text_raw
+                )
+                self.processed_chars += len(segment_text_raw)  # 更新已处理字符位置
+
+                # 如果是第一句话，在找到第一个逗号后，将标志设置为False
+                if self.is_first_sentence:
+                    self.is_first_sentence = False
+
+                return segment_text
+            elif self.tts_stop_request and current_text:
+                segment_text = current_text
+                self.is_first_sentence = True  # 重置标志
+                return segment_text
+            else:
+                return None
+        except Exception as e:
+            logger.bind(tag=TAG).error(
+                f"_get_segment_text 处理失败: {str(e)}, 堆栈: {traceback.format_exc()}"
+            )
             return None
 
     def _process_audio_file(self, tts_file):
@@ -303,13 +309,15 @@ class TTSProviderBase(ABC):
             tuple: (sentence_type, audio_datas, content_detail)
         """
         audio_datas = []
-        if tts_file.endswith(".p3"):
-            audio_datas, _ = p3.decode_opus_from_file(tts_file)
-        elif self.conn.audio_format == "pcm":
-            audio_datas, _ = self.audio_to_pcm_data(tts_file)
-        else:
-            audio_datas, _ = self.audio_to_opus_data(tts_file)
-
+        try:
+            if tts_file.endswith(".p3"):
+                audio_datas, _ = p3.decode_opus_from_file(tts_file)
+            elif self.conn.audio_format == "pcm":
+                audio_datas, _ = self.audio_to_pcm_data(tts_file)
+            else:
+                audio_datas, _ = self.audio_to_opus_data(tts_file)
+        except Exception as e:
+            logger.bind(tag=TAG).error(f"处理音频文件失败: {str(e)}")
         if (
             self.delete_audio_file
             and tts_file is not None
@@ -331,10 +339,11 @@ class TTSProviderBase(ABC):
             segment_text = textUtils.get_string_no_punctuation_or_emoji(remaining_text)
             if segment_text:
                 tts_file = self.to_tts(segment_text)
-                audio_datas = self._process_audio_file(tts_file)
-                self.tts_audio_queue.put(
-                    (SentenceType.MIDDLE, audio_datas, segment_text)
-                )
-                self.processed_chars += len(full_text)
-                return True
+                if tts_file and os.path.exists(tts_file):
+                    audio_datas = self._process_audio_file(tts_file)
+                    self.tts_audio_queue.put(
+                        (SentenceType.MIDDLE, audio_datas, segment_text)
+                    )
+                    self.processed_chars += len(full_text)
+                    return True
         return False

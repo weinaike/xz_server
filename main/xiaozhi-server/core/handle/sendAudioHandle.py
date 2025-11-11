@@ -136,4 +136,5 @@ async def send_stt_message(conn, text):
     await conn.websocket.send(
         json.dumps({"type": "stt", "text": stt_text, "session_id": conn.session_id})
     )
+    conn.client_abort = False
     await send_tts_message(conn, "start")

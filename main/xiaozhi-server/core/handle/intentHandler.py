@@ -4,7 +4,7 @@ import uuid
 from core.handle.sendAudioHandle import send_stt_message, send_tts_message
 from core.handle.helloHandle import checkWakeupWords
 from core.utils.util import remove_punctuation_and_length
-from core.providers.tts.dto.dto import ContentType
+from core.providers.tts.dto.dto import ContentType, SentenceType, TTSMessageDTO
 from core.utils.dialogue import Message
 from plugins_func.register import Action
 from loguru import logger
@@ -98,7 +98,6 @@ async def process_intent_result(conn, intent_result, original_text):
             }
 
             await send_stt_message(conn, original_text)
-            conn.client_abort = False
 
             # 使用executor执行函数调用和结果处理
             def process_function_call():
@@ -146,6 +145,20 @@ async def process_intent_result(conn, intent_result, original_text):
 
 
 def speak_txt(conn, text):
+    conn.tts.tts_text_queue.put(
+        TTSMessageDTO(
+            sentence_id=conn.sentence_id,
+            sentence_type=SentenceType.FIRST,
+            content_type=ContentType.ACTION,
+        )
+    )    
     conn.tts.tts_one_sentence(conn, ContentType.TEXT, content_detail=text)
+    conn.tts.tts_text_queue.put(
+        TTSMessageDTO(
+            sentence_id=conn.sentence_id,
+            sentence_type=SentenceType.LAST,
+            content_type=ContentType.ACTION,
+        )
+    )    
     conn.dialogue.put(Message(role="assistant", content=text))
  

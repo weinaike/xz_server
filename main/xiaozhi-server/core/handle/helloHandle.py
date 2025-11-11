@@ -4,9 +4,9 @@ import json
 import random
 import shutil
 import asyncio
-from core.handle.sendAudioHandle import send_stt_message
-from core.utils.util import remove_punctuation_and_length
-from core.providers.tts.dto.dto import ContentType, InterfaceType
+from core.handle.sendAudioHandle import send_stt_message, sendAudioMessage
+from core.utils.util import audio_to_data, remove_punctuation_and_length
+from core.providers.tts.dto.dto import ContentType, InterfaceType, SentenceType
 
 
 TAG = __name__
@@ -58,9 +58,11 @@ async def checkWakeupWords(conn, text):
         text_hello = WAKEUP_CONFIG["text"]
         if not text_hello:
             text_hello = text
-        conn.tts.tts_one_sentence(
-            conn, ContentType.FILE, content_file=file, content_detail=text_hello
-        )
+        
+        opus_packets = audio_to_data(file)
+        await sendAudioMessage(conn, SentenceType.FIRST, opus_packets, text_hello)
+        await sendAudioMessage(conn, SentenceType.LAST, [], None)
+        
         if time.time() - WAKEUP_CONFIG["create_time"] > WAKEUP_CONFIG["refresh_time"]:
             asyncio.create_task(wakeupWordsResponse(conn))
         return True

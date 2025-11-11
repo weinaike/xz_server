@@ -194,6 +194,11 @@ class TTSProvider(TTSProviderBase):
                 logger.bind(tag=TAG).debug(
                     f"TTS任务｜{message.sentence_type.name} ｜ {message.content_type.name}"
                 )
+
+                if self.conn.client_abort:
+                    logger.bind(tag=TAG).info("收到打断信息，终止TTS文本处理线程")
+                    continue
+
                 if message.sentence_type == SentenceType.FIRST:
                     # 初始化参数
                     future = asyncio.run_coroutine_threadsafe(
@@ -250,7 +255,7 @@ class TTSProvider(TTSProviderBase):
                 # 确保 `recv()` 运行在同一个 event loop
                 msg = await self.ws.recv()
                 res = self.parser_response(msg)
-                self.print_response(res, "send_text res:")
+                self.print_response(res, "send_text res:")         
 
                 if res.optional.event == EVENT_TTSSentenceStart:
                     json_data = json.loads(res.payload.decode("utf-8"))
@@ -267,7 +272,7 @@ class TTSProvider(TTSProviderBase):
                     logger.bind(tag=TAG).debug(
                         f"推送数据到队列里面帧数～～{len(opus_datas)}"
                     )
-                    if is_first_sentence:
+                    if is_first_sentence and not self.conn.client_abort:
                         # 第一句话直接发送
                         self.tts_audio_queue.put(
                             (SentenceType.MIDDLE, opus_datas, self.tts_text)
@@ -277,7 +282,7 @@ class TTSProvider(TTSProviderBase):
                         opus_datas_cache = opus_datas_cache + opus_datas
                 elif res.optional.event == EVENT_TTSSentenceEnd:
                     logger.bind(tag=TAG).info(f"句子语音生成成功：{self.tts_text}")
-                    if not is_first_sentence:
+                    if not is_first_sentence and not self.conn.client_abort:
                         # 只有非第一句话才发送缓存的数据
                         self.tts_audio_queue.put(
                             (SentenceType.MIDDLE, opus_datas_cache, self.tts_text)
@@ -289,10 +294,9 @@ class TTSProvider(TTSProviderBase):
                     for tts_file, text in self.before_stop_play_files:
                         if tts_file and os.path.exists(tts_file):
                             audio_datas = self._process_audio_file(tts_file)
-                            self.tts_audio_queue.put(
-                                (SentenceType.MIDDLE, audio_datas, text)
-                            )
-                    self.before_stop_play_files.clear()
+                            if not self.conn.client_abort:
+                                self.tts_audio_queue.put((SentenceType.MIDDLE, audio_datas, text))
+                        self.before_stop_play_files.clear()
                     self.tts_audio_queue.put((SentenceType.LAST, [], None))
 
                     opus_datas_cache = []

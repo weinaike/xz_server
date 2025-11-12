@@ -10,6 +10,7 @@ import threading
 import traceback
 import subprocess
 import websockets
+from websockets.exceptions import ConnectionClosed
 from core.utils.util import (
     extract_json_from_string,
     initialize_modules,
@@ -18,7 +19,7 @@ from core.utils.util import (
     filter_sensitive_info,
     initialize_tts,
 )
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from core.mcp.manager import MCPManager
 from core.handle.reportHandle import report
 from core.providers.tts.default import DefaultTTS
@@ -34,7 +35,7 @@ from core.handle.receiveAudioHandle import handleAudioMessage
 from core.providers.tts.dto.dto import ContentType, TTSMessageDTO, SentenceType
 from config.logger import setup_logging, build_module_string, update_module_string
 from config.manage_api_client import DeviceNotFoundException, DeviceBindException
-
+from core.providers.llm.base import LLMProviderBase
 
 TAG = __name__
 
@@ -68,7 +69,7 @@ class ConnectionHandler:
         self.read_config_from_api = self.config.get("read_config_from_api", False)
 
         self.websocket = None
-        self.headers = None
+        self.headers = {}
         self.device_id = None
         self.client_ip = None
         self.client_ip_info = {}
@@ -84,7 +85,7 @@ class ConnectionHandler:
         # 线程任务相关
         self.loop = asyncio.get_event_loop()
         self.stop_event = threading.Event()
-        self.executor = ThreadPoolExecutor(max_workers=5)
+        self.executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(max_workers=5)
 
         # 添加上报线程池
         self.report_queue = queue.Queue()
@@ -99,7 +100,7 @@ class ConnectionHandler:
         self.tts = None
         self._asr = _asr
         self._vad = _vad
-        self.llm = _llm
+        self.llm: LLMProviderBase = _llm
         self.memory = _memory
         self.intent = _intent
 
@@ -189,12 +190,12 @@ class ConnectionHandler:
             # 获取差异化配置
             self._initialize_private_config()
             # 异步初始化
-            self.executor.submit(self._initialize_components)
-
+            if self.executor:
+                self.executor.submit(self._initialize_components)
             try:
                 async for message in self.websocket:
                     await self._route_message(message)
-            except websockets.exceptions.ConnectionClosed:
+            except ConnectionClosed:
                 self.logger.bind(tag=TAG).info("客户端断开连接")
 
         except AuthenticationError as e:
@@ -213,6 +214,7 @@ class ConnectionHandler:
             if self.memory:
                 # 使用线程池异步保存记忆
                 def save_memory_task():
+                    loop = None
                     try:
                         # 创建新事件循环（避免与主循环冲突）
                         loop = asyncio.new_event_loop()
@@ -223,7 +225,8 @@ class ConnectionHandler:
                     except Exception as e:
                         self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
                     finally:
-                        loop.close()
+                        if loop is not None:
+                            loop.close()
 
                 # 启动线程保存记忆，不等待完成
                 threading.Thread(target=save_memory_task, daemon=True).start()
@@ -322,6 +325,8 @@ class ConnectionHandler:
             asyncio.run_coroutine_threadsafe(
                 self.tts.open_audio_channels(self), self.loop
             )
+            # 目的是让llm持有对connection的引用，以便控制流程
+            self.llm.set_connection(self)
 
             """加载记忆"""
             self._initialize_memory()
@@ -546,7 +551,7 @@ class ConnectionHandler:
         self.prompt = prompt
         # 更新系统prompt至上下文
         self.dialogue.update_system_message(self.prompt)
-
+    # init_chat 第一次启动聊天
     def chat(self, query, depth=0):
         self.logger.bind(tag=TAG).info(f"大模型收到用户消息: {query}")
         self.llm_finish_task = False               
@@ -567,7 +572,7 @@ class ConnectionHandler:
         functions = None
         if self.intent_type == "function_call" and hasattr(self, "func_handler"):
             functions = self.func_handler.get_functions()
-        response_message = []
+        
         # 使用带记忆的对话
         memory_str = None
         if self.memory is not None:
@@ -575,31 +580,35 @@ class ConnectionHandler:
                 self.memory.query_memory(query), self.loop
             )
             memory_str = future.result()
-
-
-        # 处理流式响应
-        tool_call_flag = False
-        function_name = None
-        function_id = None
-        function_arguments = ""
-        content_arguments = ""
+        
+        response_message = []
         try:
-            if functions is not None:
-                # 使用支持functions的streaming接口
-                llm_responses = self.llm.response_with_functions(
-                    self.session_id,
-                    self.dialogue.get_llm_dialogue_with_memory(memory_str),
-                    functions=functions,
-                )
-            else:
-                llm_responses = self.llm.response(
-                    self.session_id,
-                    self.dialogue.get_llm_dialogue_with_memory(memory_str),
-                )
+            # 处理流式响应
+            tool_call_flag = False
+            function_name = None
+            function_id = None
+            function_arguments = ""
+            content_arguments = ""
 
+            llm_responses = []
+            if not self.client_abort:
+                if functions is not None:
+                    # 使用支持functions的streaming接口
+                    llm_responses = self.llm.response_with_functions(
+                        self.session_id,
+                        self.dialogue.get_llm_dialogue_with_memory(memory_str),
+                        functions=functions,
+                    )
+                else:
+                    llm_responses = self.llm.response(
+                        self.session_id,
+                        self.dialogue.get_llm_dialogue_with_memory(memory_str),
+                    )
+            if self.client_abort:
+                llm_responses = []
+                
+            
             for response in llm_responses:
-                if self.client_abort:
-                    break
                 if functions is not None:
                     content, tools_call = response
                     if "content" in response:
@@ -685,10 +694,13 @@ class ConnectionHandler:
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"LLM 流式响应处理出错: {e}")
         # 存储对话内容
+
         if len(response_message) > 0:
-            self.dialogue.put(
-                Message(role="assistant", content="".join(response_message))
-            )
+            content_join = "".join(response_message).strip()
+            if len(content_join) > 0:
+                self.dialogue.put(
+                    Message(role="assistant", content=content_join)
+                )
         
         if depth == 0:
             self.llm_finish_task = True

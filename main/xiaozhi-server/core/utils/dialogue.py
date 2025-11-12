@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 from typing import List, Dict
 from datetime import datetime
@@ -7,8 +8,8 @@ class Message:
     def __init__(
         self,
         role: str,
-        content: str = None,
-        uniq_id: str = None,
+        content: Optional[str] = None,
+        uniq_id: Optional[str] = None,
         tool_calls=None,
         tool_call_id=None,
     ):
@@ -61,7 +62,7 @@ class Dialogue:
             self.put(Message(role="system", content=new_content))
 
     def get_llm_dialogue_with_memory(
-        self, memory_str: str = None
+        self, memory_str: Optional[str] = None
     ) -> List[Dict[str, str]]:
         if memory_str is None or len(memory_str) == 0:
             return self.get_llm_dialogue()

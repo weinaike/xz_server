@@ -1,3 +1,4 @@
+from typing import Optional
 from plugins_func.register import register_function, ToolType, ActionResponse, Action
 from config.logger import setup_logging
 
@@ -26,7 +27,7 @@ handle_exit_intent_function_desc = {
 @register_function(
     "handle_exit_intent", handle_exit_intent_function_desc, ToolType.SYSTEM_CTL
 )
-def handle_exit_intent(conn, say_goodbye: str | None = None):
+def handle_exit_intent(conn, say_goodbye: Optional[str] = None):
     # 处理退出意图
     try:
         if say_goodbye is None:

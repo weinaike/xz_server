@@ -1,6 +1,7 @@
 import os
 import re
 import queue
+from typing import Optional, TYPE_CHECKING
 import uuid
 import asyncio
 import threading
@@ -21,6 +22,8 @@ from core.providers.tts.dto.dto import (
     InterfaceType,
 )
 
+if TYPE_CHECKING:
+    from core.connection import ConnectionHandler
 
 import traceback
 
@@ -31,7 +34,7 @@ logger = setup_logging()
 class TTSProviderBase(ABC):
     def __init__(self, config, delete_audio_file):
         self.interface_type = InterfaceType.NON_STREAM
-        self.conn = None
+        self.conn: Optional["ConnectionHandler"] = None
         self.tts_timeout = 10
         self.delete_audio_file = delete_audio_file
         self.output_file = config.get("output_dir", "tmp/")
@@ -128,6 +131,10 @@ class TTSProviderBase(ABC):
         sentence_id=None,
     ):
         """发送一句话"""
+        if content_detail is None:
+            return
+        if not isinstance(content_detail, str):
+            content_detail = str(content_detail)
         if not sentence_id:
             if conn.sentence_id:
                 sentence_id = conn.sentence_id
@@ -168,6 +175,9 @@ class TTSProviderBase(ABC):
     # 这里默认是非流式的处理方式
     # 流式处理方式请在子类中重写
     def tts_text_priority_thread(self):
+        if not self.conn:
+            logger.bind(tag=TAG).error("TTS连接未初始化，无法处理文本队列")
+            return
         while not self.conn.stop_event.is_set():
             try:
                 message = self.tts_text_queue.get(timeout=1)
@@ -212,6 +222,9 @@ class TTSProviderBase(ABC):
                 )
 
     def _audio_play_priority_thread(self):
+        if not self.conn:
+            logger.bind(tag=TAG).error("TTS连接未初始化，无法处理音频队列")
+            return
         while not self.conn.stop_event.is_set():
             text = None
             try:
@@ -232,7 +245,7 @@ class TTSProviderBase(ABC):
                 )
                 future.result()
                 if self.conn.max_output_size > 0 and text:
-                    add_device_output(self.conn.headers.get("device-id"), len(text))
+                    add_device_output(self.conn.headers.get("device-id", ""), len(text))
                 
             except Exception as e:
                 logger.bind(tag=TAG).error(f"audio_play_priority priority_thread: {text} {e}")
@@ -245,8 +258,9 @@ class TTSProviderBase(ABC):
 
     async def close(self):
         """资源清理方法"""
-        if hasattr(self, "ws") and self.ws:
-            await self.ws.close()
+        ws = getattr(self, "ws", None)
+        if ws:
+            await ws.close()
 
     def _get_segment_text(self):
         try:
@@ -294,6 +308,9 @@ class TTSProviderBase(ABC):
             return None
 
     def _process_audio_file(self, tts_file):
+        if not self.conn:
+            logger.bind(tag=TAG).error("TTS连接未初始化，无法处理音频文件")
+            return []
         """处理音频文件并转换为指定格式
 
         Args:
@@ -328,6 +345,9 @@ class TTSProviderBase(ABC):
         Returns:
             bool: 是否成功处理了文本
         """
+        if not self.conn:
+            logger.bind(tag=TAG).error("TTS连接未初始化，无法处理剩余文本")
+            return False
         full_text = "".join(self.tts_text_buff)
         remaining_text = full_text[self.processed_chars :]
         if remaining_text:

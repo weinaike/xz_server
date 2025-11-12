@@ -95,7 +95,7 @@ def ensure_directories(config):
         selected_provider = selected_modules.get(module_type)
         if not selected_provider:
             continue
-        if config.get(module) is None:
+        if config.get(module_type) is None:
             continue
         if config.get(selected_provider) is None:
             continue

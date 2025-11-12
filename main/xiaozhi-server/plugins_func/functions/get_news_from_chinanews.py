@@ -1,4 +1,5 @@
 import random
+from typing import Optional
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
@@ -145,7 +146,7 @@ def map_category(category_text):
     ToolType.SYSTEM_CTL,
 )
 def get_news_from_chinanews(
-    conn, category: str = None, detail: bool = False, lang: str = "zh_CN"
+    conn, category: Optional[str] = None, detail: bool = False, lang: str = "zh_CN"
 ):
     """获取新闻并随机选择一条进行播报，或获取上一条新闻的详细内容"""
     try:

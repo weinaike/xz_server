@@ -1,3 +1,4 @@
+from typing import Optional
 from config.logger import setup_logging
 from plugins_func.register import register_function, ToolType, ActionResponse, Action
 from core.handle.iotHandle import get_iot_status, send_iot_conn
@@ -108,7 +109,7 @@ handle_device_function_desc = {
     ToolType.IOT_CTL,
 )
 def handle_speaker_volume_or_screen_brightness(
-    conn, device_type: str, action: str, value: int = None
+    conn, device_type: str, action: str, value: Optional[int] = None
 ):
     # 检查value是否为中文值
     if (

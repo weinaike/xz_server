@@ -12,24 +12,26 @@ from loguru import logger
 TAG = __name__
 
 
-async def handle_user_intent(conn, text):
+async def handle_user_intent(conn, text) -> tuple[bool, str | None]:
     # 检查是否有明确的退出命令
     filtered_text = remove_punctuation_and_length(text)[1]
     if await check_direct_exit(conn, filtered_text):
-        return True
+        return True, None
     # 检查是否是唤醒词
     if await checkWakeupWords(conn, filtered_text):
-        return True
+        return True, None
 
     if conn.intent_type == "function_call":
         # 使用支持function calling的聊天方法,不再进行意图分析
-        return False
+        intent_result = await corrected_intent_with_llm(conn, text)
+        return False, intent_result
     # 使用LLM进行意图分析
     intent_result = await analyze_intent_with_llm(conn, text)
     if not intent_result:
-        return False
+        return False, None
     # 处理各种意图
-    return await process_intent_result(conn, intent_result, text)
+    Done:bool = await process_intent_result(conn, intent_result, text)
+    return Done, intent_result
 
 
 async def check_direct_exit(conn, text):
@@ -62,7 +64,15 @@ async def analyze_intent_with_llm(conn, text):
 
     return None
 
+async def corrected_intent_with_llm(conn, text):
+    dialogue = conn.dialogue
+    try:
+        intent_result = await conn.intent.corrected_intent(conn, dialogue.dialogue, text)
+        return intent_result
+    except Exception as e:
+        conn.logger.bind(tag=TAG).error(f"意图识别失败: {str(e)}")
 
+    return None
 async def process_intent_result(conn, intent_result, original_text):
     """处理意图识别结果"""
     try:

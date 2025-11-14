@@ -1,5 +1,6 @@
 import time
 import copy
+import json
 from core.utils.util import remove_punctuation_and_length
 from core.handle.sendAudioHandle import send_stt_message
 from core.handle.intentHandler import handle_user_intent
@@ -47,8 +48,24 @@ async def handleAudioMessage(conn, audio):
             text_len, _ = remove_punctuation_and_length(raw_text)
             if text_len > 0:
                 # 使用自定义模块进行上报
-                await startToChat(conn, raw_text)
-                enqueue_asr_report(conn, raw_text, copy.deepcopy(conn.asr_audio))
+
+                # 首先进行意图分析
+                intent_handled, intent_result_str = await handle_user_intent(conn, raw_text)
+
+                if intent_handled:
+                    # 如果意图已被处理，不再进行聊天
+                    conn.asr_server_receive = True                    
+                else:
+                    if intent_result_str is not None:
+                        json_intent = json.loads(intent_result_str)
+                        intent_name = json_intent.get("function_call", {}).get("name", "")
+                        if intent_name == "continue_chat":
+                            conn.logger.bind(tag=TAG).info(f"原始识别内容：{raw_text}")                        
+                            raw_text = json_intent.get("function_call", {}).get("true_content", raw_text)
+                            conn.logger.bind(tag=TAG).info(f"模型纠正内容：{raw_text}")
+
+                    await startToChat(conn, raw_text)
+                    enqueue_asr_report(conn, raw_text, copy.deepcopy(conn.asr_audio))
             else:
                 conn.asr_server_receive = True
         conn.asr_audio.clear()
@@ -67,14 +84,6 @@ async def startToChat(conn, text):
         ):
             await max_out_size(conn)
             return
-
-    # 首先进行意图分析
-    intent_handled = await handle_user_intent(conn, text)
-
-    if intent_handled:
-        # 如果意图已被处理，不再进行聊天
-        conn.asr_server_receive = True
-        return
 
     # 意图未被处理，继续常规聊天流程
     await send_stt_message(conn, text)
@@ -104,7 +113,14 @@ async def no_voice_close_connect(conn):
             prompt = end_prompt.get("prompt")
             if not prompt:
                 prompt = "请你以“时间过得真快”未来头，用富有感情、依依不舍的话来结束这场对话吧。！"
-            await startToChat(conn, prompt)
+
+            # 首先进行意图分析
+            intent_handled, _ = await handle_user_intent(conn, prompt)
+            if intent_handled:
+                # 如果意图已被处理，不再进行聊天
+                conn.asr_server_receive = True
+            else:
+                await startToChat(conn, prompt)
 
 
 async def max_out_size(conn):

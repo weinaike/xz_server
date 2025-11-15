@@ -272,7 +272,7 @@ class ASRProvider(ASRProviderBase):
             start_time = time.time()
             text = await self._send_request(combined_pcm_data, segment_size)
             if text:
-                logger.bind(tag=TAG).debug(
+                logger.bind(tag=TAG).info(
                     f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}"
                 )
                 return text, file_path

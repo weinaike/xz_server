@@ -107,7 +107,7 @@ class ConnectionHandler:
         # vad相关变量
         self.client_audio_buffer = bytearray()
         self.client_have_voice = False
-        self.client_have_voice_last_time = 0.0
+        self.client_have_voice_last_time = 0
         self.client_no_voice_last_time = 0.0
         self.client_voice_stop = False
 
@@ -537,6 +537,9 @@ class ConnectionHandler:
                 # 否则使用主LLM
                 self.intent.set_llm(self.llm)
                 self.logger.bind(tag=TAG).info("使用主LLM作为意图识别模型")
+        else:
+            self.intent.set_llm(self.llm)
+            self.logger.bind(tag=TAG).info("使用主LLM作为意图识别模型")
 
         """加载插件"""
         self.func_handler = FunctionHandler(self)

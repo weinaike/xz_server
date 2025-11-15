@@ -22,9 +22,9 @@ class IntentProviderBase(ABC):
         """
         检测用户最后一句话的意图
         Args:
-            dialogue_history: 对话历史记录列表，每条记录包含role和content
+            dialogue_history: 对话历史记录列表,每条记录包含role和content
         Returns:
-            返回识别出的意图，格式为:
+            返回识别出的意图,格式为:
             - "继续聊天"
             - "结束聊天"
             - "播放音乐 歌名" 或 "随机播放音乐"

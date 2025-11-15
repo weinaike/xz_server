@@ -1,7 +1,7 @@
 from ..base import IntentProviderBase
 from typing import List, Dict
 from config.logger import setup_logging
-
+import json
 TAG = __name__
 logger = setup_logging()
 
@@ -19,4 +19,4 @@ class IntentProvider(IntentProviderBase):
         logger.bind(tag=TAG).debug(
             "Using NoIntentProvider, always returning continue chat"
         )
-        return '{"function_call": {"name": "continue_chat"}}'
+        return  json.dumps({"function_call": {"name": "continue_chat","true_content": text}},ensure_ascii=False)

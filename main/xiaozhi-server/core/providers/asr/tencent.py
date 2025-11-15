@@ -89,7 +89,7 @@ class ASRProvider(ASRProviderBase):
             result = self._send_request(request_body, timestamp, authorization)
 
             if result:
-                logger.bind(tag=TAG).debug(
+                logger.bind(tag=TAG).info(
                     f"腾讯云语音识别耗时: {time.time() - start_time:.3f}s | 结果: {result}"
                 )
 

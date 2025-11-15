@@ -135,7 +135,7 @@ class ASRProvider(ASRProviderBase):
             else:
                 pcm_data = self.decode_opus(opus_data)
             file_path = self.save_audio_to_file(pcm_data, session_id)
-            logger.bind(tag=TAG).debug(
+            logger.bind(tag=TAG).info(
                 f"音频文件保存耗时: {time.time() - start_time:.3f}s | 路径: {file_path}"
             )
 
@@ -146,7 +146,7 @@ class ASRProvider(ASRProviderBase):
             s.accept_waveform(sample_rate, samples)
             self.model.decode_stream(s)
             text = s.result.text
-            logger.bind(tag=TAG).debug(
+            logger.bind(tag=TAG).info(
                 f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}"
             )
 

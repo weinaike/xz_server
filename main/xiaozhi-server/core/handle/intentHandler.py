@@ -23,7 +23,7 @@ async def handle_user_intent(conn, text) -> tuple[bool, str | None]:
 
     if conn.intent_type == "function_call":
         # 使用支持function calling的聊天方法,不再进行意图分析
-        intent_result = await corrected_intent_with_llm(conn, text)
+        intent_result = await analyze_intent_with_llm(conn, text)
         return False, intent_result
     # 使用LLM进行意图分析
     intent_result = await analyze_intent_with_llm(conn, text)
@@ -64,15 +64,6 @@ async def analyze_intent_with_llm(conn, text):
 
     return None
 
-async def corrected_intent_with_llm(conn, text):
-    dialogue = conn.dialogue
-    try:
-        intent_result = await conn.intent.corrected_intent(conn, dialogue.dialogue, text)
-        return intent_result
-    except Exception as e:
-        conn.logger.bind(tag=TAG).error(f"意图识别失败: {str(e)}")
-
-    return None
 async def process_intent_result(conn, intent_result, original_text):
     """处理意图识别结果"""
     try:
